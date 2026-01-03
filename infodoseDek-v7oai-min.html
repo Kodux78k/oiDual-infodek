@@ -1,0 +1,420 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Dual.Infodose · Monólito (Power Modes + Markdown + AppDeck)</title>
+
+<!-- Lucide icons -->
+<script src="https://unpkg.com/lucide@latest"></script>
+<!-- marked + DOMPurify for Markdown rendering + highlight.js (optional) -->
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/dompurify@2.4.0/dist/purify.min.js"></script>
+
+<style>
+  :root{
+    --bg:#020406; --text:#e6eef6; --primary:#06d6ff; --danger:#ff4b4b;
+    --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, "Roboto Mono", "Courier New", monospace;
+  }
+  html,body{height:100%;margin:0;background:var(--bg);color:var(--text);font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,"Helvetica Neue",Arial;}
+  .app{min-height:100vh;padding:20px;box-sizing:border-box;}
+  .layout{max-width:1200px;margin:0 auto;display:grid;grid-template-columns:1fr;gap:18px}
+  @media(min-width:1024px){ .layout{grid-template-columns:420px 1fr} }
+
+  /* monolith */
+  .panel{background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:16px;padding:16px}
+  .hrow{display:flex;justify-content:space-between;align-items:center;gap:8px}
+  .status{font-family:var(--mono);font-size:12px;padding:6px 8px;border-radius:8px;background:rgba(255,255,255,0.02)}
+  .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+  input,select,textarea,button{font-family:inherit}
+  input,select,textarea{background:rgba(0,0,0,0.35);color:var(--text);border:1px solid rgba(255,255,255,0.04);padding:8px;border-radius:10px}
+  button.btn{padding:8px 10px;border-radius:10px;border:none;background:var(--primary);color:#000;cursor:pointer;font-weight:700}
+  button.ghost{background:transparent;border:1px solid rgba(255,255,255,0.06);color:var(--text)}
+  .log{height:260px;overflow:auto;background:rgba(0,0,0,0.28);padding:8px;border-radius:10px;font-family:var(--mono);font-size:12px}
+
+  /* controls */
+  .controls{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+  .mode-pill{padding:8px 10px;border-radius:10px;border:1px solid rgba(255,255,255,0.06);cursor:pointer;background:rgba(255,255,255,0.02)}
+  .mode-pill.active{background:linear-gradient(90deg,var(--primary),#9b6bff);color:#000;font-weight:800}
+
+  /* right area (deck + viewer + md) */
+  .right-grid{display:grid;grid-template-rows:auto auto 1fr;gap:12px}
+  .deck{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px;padding:8px;border-radius:10px;background:rgba(255,255,255,0.02)}
+  .app-card{background:rgba(0,0,0,0.35);padding:10px;border-radius:10px;display:flex;flex-direction:column;align-items:center;gap:6px;cursor:pointer;position:relative}
+  .app-card .del{position:absolute;top:6px;right:6px;border:none;background:transparent;color:rgba(255,255,255,0.6);cursor:pointer;display:none}
+  .app-card.edit .del{display:block}
+  .viewer{height:420px;background:#000;border-radius:10px;overflow:hidden;border:1px solid rgba(255,255,255,0.04)}
+  iframe#appFrame{width:100%;height:100%;border:0}
+
+  /* markdown */
+  .md-area{display:flex;gap:8px}
+  .md-editor{flex:1;min-height:220px;border-radius:10px;padding:8px;background:rgba(0,0,0,0.25);color:var(--text);border:1px solid rgba(255,255,255,0.04);font-family:var(--mono)}
+  .md-preview{flex:1;min-height:220px;border-radius:10px;padding:12px;background:rgba(0,0,0,0.12);overflow:auto;border:1px solid rgba(255,255,255,0.04)}
+
+  .warn{color:var(--danger);font-weight:800;font-family:var(--mono);font-size:13px;margin-top:6px}
+  .footer{margin-top:10px;font-family:var(--mono);font-size:11px;opacity:.6}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="layout">
+
+    <!-- LEFT: Monólito + controls -->
+    <div class="panel">
+      <div class="hrow">
+        <div><strong>Dual.Infodose · Monolito</strong><div style="font-size:12px;opacity:.6">Power Modes · Markdown · AppDeck</div></div>
+        <div class="status" id="monoStatus">STATUS: IDLE</div>
+      </div>
+
+      <div class="grid-2" style="margin-top:12px">
+        <div><label>OpenRouter Key</label><input id="skInput" type="password" placeholder="sk-..." /></div>
+        <div><label>Modelo</label><select id="modelSelect"><option>deepseek/deepseek-chat</option><option>meta-llama/llama-3-70b</option></select></div>
+      </div>
+
+      <div style="margin-top:10px">
+        <label>Runtime Mode</label>
+        <div class="controls" id="modeControls">
+          <div class="mode-pill" data-mode="safe">SAFE</div>
+          <div class="mode-pill" data-mode="low">LOW SCRIPTS</div>
+          <div class="mode-pill" data-mode="power">POWER</div>
+          <div class="mode-pill" data-mode="god" style="border-color:rgba(255,77,77,0.9)">GOD MODE</div>
+        </div>
+        <div class="warn" id="modeWarn" style="display:none">GOD MODE ativa — use apenas em ambiente local e confiável.</div>
+      </div>
+
+      <div style="margin-top:12px">
+        <label>Console Logs</label>
+        <div class="log" id="logArea"></div>
+      </div>
+
+      <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn" id="saveCfg">Salvar Config</button>
+        <button class="btn ghost" id="exportApps">Exportar apps</button>
+        <button class="btn ghost" id="importApps">Importar</button>
+        <button class="btn ghost" id="clearApps">Limpar apps</button>
+      </div>
+
+      <div class="footer">
+        Switch mode to control `iframe` sandbox/allow attributes. God Mode removes sandbox and opens powerful APIs.
+      </div>
+    </div>
+
+    <!-- RIGHT: Deck + Viewer + Markdown -->
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <div class="panel" style="display:flex;flex-direction:column;gap:8px">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div><strong>AppDeck</strong><div style="font-size:12px;opacity:.6">Upload .html or save URL</div></div>
+          <div style="display:flex;gap:8px">
+            <input id="appFileInput" type="file" accept=".html" />
+            <button class="btn" id="addFromFile">Adicionar</button>
+            <button class="btn ghost" id="openAddUrl">Adicionar URL</button>
+          </div>
+        </div>
+        <div class="deck" id="deck"></div>
+      </div>
+
+      <div class="viewer panel">
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:8px;background:rgba(0,0,0,0.25)">
+          <div><strong id="viewerTitle">Viewer</strong></div>
+          <div style="display:flex;gap:8px">
+            <button class="btn ghost" id="snapshotBtn">Snapshot</button>
+            <button class="btn ghost" id="openInNew">Open</button>
+          </div>
+        </div>
+        <iframe id="appFrame" sandbox="allow-scripts allow-forms allow-modals"></iframe>
+      </div>
+
+      <div class="panel">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <strong>Markdown</strong>
+          <div style="display:flex;gap:8px">
+            <button class="btn" id="renderMd">Render</button>
+            <button class="btn ghost" id="injectAsApp">Inject → App (srcdoc)</button>
+          </div>
+        </div>
+
+        <div class="md-area" style="margin-top:8px">
+          <textarea id="mdEditor" class="md-editor" placeholder="# Hello\n\nEscreva MD aqui..."></textarea>
+          <div id="mdPreview" class="md-preview"></div>
+        </div>
+
+        <div style="display:flex;gap:10px;margin-top:8px">
+          <label style="font-family:var(--mono);font-size:12px">Sanitize:</label>
+          <input type="checkbox" id="mdSanitize" checked />
+          <label style="font-family:var(--mono);font-size:12px">Allow embedded scripts (only in POWER/GOD)</label>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+/* ---------------------------
+  Utilities & initial state
+   ---------------------------*/
+const logArea = document.getElementById('logArea');
+function addLog(msg){
+  const t = new Date().toLocaleTimeString();
+  logArea.innerHTML = `<div style="font-family:var(--mono);margin-bottom:6px"><strong>[${t}]</strong> ${escapeHtml(msg)}</div>` + logArea.innerHTML;
+}
+function escapeHtml(s){ return String(s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+
+/* ---------------------------
+  AppDeck (IndexedDB)
+   ---------------------------*/
+const DB = { name:'infodose_apps', store:'apps' };
+let db = null;
+function openDB(){
+  return new Promise((res,rej)=>{
+    const r = indexedDB.open(DB.name,1);
+    r.onupgradeneeded = e => { const d=e.target.result; if(!d.objectStoreNames.contains(DB.store)) d.createObjectStore(DB.store,{keyPath:'id',autoIncrement:true}); };
+    r.onsuccess = e => { db = e.target.result; res(db); };
+    r.onerror = e => rej(e);
+  });
+}
+function addApp(obj){ return new Promise((res,rej)=>{ const tx = db.transaction(DB.store,'readwrite'); tx.objectStore(DB.store).add(obj); tx.oncomplete = ()=> res(); tx.onerror = rej; }); }
+function getAllApps(){ return new Promise(res=>{ const tx = db.transaction(DB.store,'readonly'); const rq = tx.objectStore(DB.store).getAll(); rq.onsuccess = ()=> res(rq.result); }); }
+function deleteApp(id){ return new Promise(res=>{ const tx = db.transaction(DB.store,'readwrite'); tx.objectStore(DB.store).delete(id); tx.oncomplete = ()=> res(); }); }
+function clearApps(){ return new Promise(res=>{ const tx = db.transaction(DB.store,'readwrite'); tx.objectStore(DB.store).clear(); tx.oncomplete = ()=> res(); }); }
+
+/* ---------------------------
+  Viewer + Console Bridge
+   ---------------------------*/
+const appFrame = document.getElementById('appFrame');
+let runtimeMode = localStorage.getItem('INF_RUNTIME_MODE') || 'safe'; // safe|low|power|god
+const modeControls = document.querySelectorAll('.mode-pill');
+const modeWarn = document.getElementById('modeWarn');
+
+function applyModeUI(){
+  modeControls.forEach(el=> el.classList.toggle('active', el.dataset.mode===runtimeMode));
+  modeWarn.style.display = runtimeMode==='god' ? 'block':'none';
+  setIframeMode(runtimeMode);
+  addLog('MODE_SET: ' + runtimeMode.toUpperCase());
+  localStorage.setItem('INF_RUNTIME_MODE', runtimeMode);
+}
+modeControls.forEach(el=> el.addEventListener('click', ()=> {
+  const m = el.dataset.mode;
+  if(m==='god' && !confirm('GOD MODE: real? isso remove sandbox — só local. Confirmar?')) return;
+  runtimeMode = m;
+  applyModeUI();
+}));
+
+/* map runtimeMode -> iframe sandbox & allow attributes */
+function setIframeMode(mode){
+  if(!appFrame) return;
+  // Default safe: restrict scripts off
+  if(mode === 'safe'){
+    appFrame.setAttribute('sandbox', ''); // fully sandboxed (no scripts)
+    appFrame.removeAttribute('allow');
+  } else if(mode === 'low'){
+    // allow scripts only, keep origin isolation
+    appFrame.setAttribute('sandbox', 'allow-scripts allow-forms allow-modals');
+    appFrame.removeAttribute('allow');
+  } else if(mode === 'power'){
+    // allow scripts + same-origin (powerful for blobs), but still sandboxed for top-level navigation
+    appFrame.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-forms allow-modals');
+    // give some permissions
+    appFrame.setAttribute('allow', 'clipboard-read; clipboard-write; autoplay; fullscreen');
+  } else if(mode === 'god'){
+    // GOD MODE: remove sandbox (iframe behaves like normal embedded page), add many allow flags
+    appFrame.removeAttribute('sandbox'); // dangerous
+    appFrame.setAttribute('allow', 'camera; microphone; geolocation; clipboard-read; clipboard-write; autoplay; fullscreen; payment; display-capture; usb; midi; accelerometer');
+  }
+  addLog('IFRAME_MODE_APPLIED: ' + mode);
+}
+
+/* console bridge injected only for srcdoc apps (same-origin / blob + scripts allowed) */
+function createConsoleBridge(){
+  return `<script>
+    (function(){
+      const ol = console.log.bind(console);
+      console.log = function(){
+        try{ window.parent.postMessage({type:'console-log', msgs: Array.from(arguments).map(String)}, '*'); }catch(e){}
+        ol.apply(console, arguments);
+      };
+      window.onerror = function(msg,src,ln,cn,err){
+        try{ window.parent.postMessage({type:'console-error', msgs:[String(msg) + ' @' + src + ':' + ln]}, '*'); }catch(e){}
+      };
+    })();
+  <\/script>`;
+}
+
+/* receive runtime logs from iframes */
+window.addEventListener('message', ev=>{
+  // NOTE: when file:// origin may appear as "null"; we accept variety but log origin
+  const d = ev.data;
+  if(!d || typeof d !== 'object') return;
+  if(d.type === 'console-log') addLog('RUNTIME: ' + d.msgs.join(' '));
+  if(d.type === 'console-error') addLog('RUNTIME_ERR: ' + d.msgs.join(' '));
+});
+
+/* ---------------------------
+  App creation + loadGrid
+   ---------------------------*/
+const deck = document.getElementById('deck');
+const appFileInput = document.getElementById('appFileInput');
+const addFromFile = document.getElementById('addFromFile');
+const openAddUrl = document.getElementById('openAddUrl');
+const viewerTitle = document.getElementById('viewerTitle');
+let currentApp = null;
+
+async function refreshDeck(){
+  deck.innerHTML = '';
+  const apps = await getAllApps();
+  apps.forEach(a=>{
+    const el = document.createElement('div');
+    el.className = 'app-card';
+    el.innerHTML = `<div style="font-size:20px">${a.icon||'📦'}</div><div style="font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHtml(a.title)}</div><button class="del">✕</button>`;
+    el.onclick = ()=> launchApp(a);
+    const del = el.querySelector('.del');
+    del.onclick = async (ev)=>{ ev.stopPropagation(); if(!confirm('Deletar?')) return; await deleteApp(a.id); addLog('APP_DELETED: '+a.title); await refreshDeck(); };
+    el.addEventListener('contextmenu', e=>{ e.preventDefault(); el.classList.toggle('edit'); });
+    deck.appendChild(el);
+  });
+  document.getElementById('viewerTitle').innerText = `Viewer — ${apps.length} apps`;
+}
+
+addFromFile.addEventListener('click', async ()=>{
+  const f = appFileInput.files[0];
+  if(!f) return alert('Escolha .html');
+  const txt = await f.text();
+  const obj = { title: f.name.replace(/\.html?$/i,''), icon:'📄', type:'file', content: txt, ts: Date.now() };
+  await addApp(obj);
+  addLog('APP_ADDED: ' + obj.title);
+  await refreshDeck();
+  appFileInput.value = '';
+});
+
+openAddUrl.addEventListener('click', async ()=>{
+  const url = prompt('Colar URL (https://...)');
+  if(!url) return;
+  const title = prompt('Nome do app (opcional)', url) || url;
+  const obj = { title, icon:'🌐', type:'url', content: url, ts: Date.now() };
+  await addApp(obj);
+  addLog('APP_ADDED_URL: ' + title);
+  await refreshDeck();
+});
+
+/* launch app: if file -> srcdoc with console bridge (if scripts allowed by mode); if url -> set src (no bridge) */
+async function launchApp(app){
+  currentApp = app;
+  viewerTitle.innerText = 'Viewer — ' + app.title;
+  // clear previous
+  appFrame.src = 'about:blank';
+  appFrame.removeAttribute('srcdoc');
+  // Decide: if file, use srcdoc and possibly inject console bridge if mode permits
+  if(app.type === 'file'){
+    const bridge = createConsoleBridge();
+    // If runtimeMode allows scripts in iframe (low/power/god), we can inject bridge
+    // For safe mode (no scripts), still set srcdoc but scripts won't run
+    const doc = (runtimeMode === 'god') ? app.content : (bridge + app.content);
+    // In God mode we still put content in srcdoc if desired, but God mode normally removes sandbox; keeping srcdoc is fine.
+    appFrame.srcdoc = doc;
+    addLog('EXEC_SRCDOC: ' + app.title + ' (' + runtimeMode + ')');
+  } else {
+    // URL: set src - console bridge not possible for cross-origin
+    appFrame.src = app.content;
+    addLog('EXEC_URL: ' + app.title);
+  }
+}
+
+/* snapshot current app */
+document.getElementById('snapshotBtn').addEventListener('click', async ()=>{
+  if(!currentApp) return alert('Nenhum app aberto');
+  if(currentApp.type === 'file'){
+    const title = prompt('Nome snapshot', currentApp.title) || currentApp.title;
+    const obj = { title, icon: currentApp.icon||'📦', type:'file', content: currentApp.content, ts: Date.now() };
+    await addApp(obj); addLog('SNAPSHOT_SAVED: ' + title); await refreshDeck();
+  } else {
+    // Try fetch snapshot for URL (CORS may block)
+    try{
+      const r = await fetch(currentApp.content, {mode:'cors'}); const txt = await r.text();
+      const title = prompt('Nome snapshot (from URL)', currentApp.title) || currentApp.title;
+      await addApp({ title, icon:'🌐', type:'file', content: txt, ts: Date.now() });
+      addLog('SNAPSHOT_FETCHED: ' + title); await refreshDeck();
+    }catch(e){ addLog('SNAPSHOT_FAIL: ' + e.message); alert('Snapshot failed (CORS)'); }
+  }
+});
+
+/* open current app in new tab (use blob or url) */
+document.getElementById('openInNew').addEventListener('click', async ()=>{
+  if(!currentApp) return alert('Nenhum app aberto');
+  if(currentApp.type === 'file'){
+    const blob = new Blob([currentApp.content], { type:'text/html' });
+    const url = URL.createObjectURL(blob);
+    window.open(url, '_blank');
+  } else {
+    window.open(currentApp.content, '_blank');
+  }
+});
+
+/* ---------------------------
+  Markdown rendering + inject as app
+   ---------------------------*/
+const mdEditor = document.getElementById('mdEditor');
+const mdPreview = document.getElementById('mdPreview');
+document.getElementById('renderMd').addEventListener('click', ()=>{
+  const md = mdEditor.value || '';
+  const rawHtml = marked.parse(md || '');
+  const sanitize = document.getElementById('mdSanitize').checked;
+  const safeHtml = sanitize ? DOMPurify.sanitize(rawHtml) : rawHtml;
+  mdPreview.innerHTML = safeHtml;
+  addLog('MD_RENDERED' + (sanitize ? ' (sanitized)' : ' (raw)'));
+});
+
+/* Inject MD as srcdoc app: wrap in simple html template; include optional script allow based on mode */
+document.getElementById('injectAsApp').addEventListener('click', async ()=>{
+  const md = mdEditor.value || '';
+  if(!md) return alert('Nada para injetar');
+  const rawHtml = marked.parse(md);
+  const sanitize = document.getElementById('mdSanitize').checked;
+  const safeHtml = sanitize ? DOMPurify.sanitize(rawHtml) : rawHtml;
+  const html = `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head><body>${safeHtml}</body></html>`;
+  const title = prompt('Nome do App MD', 'Markdown App') || 'Markdown App';
+  await addApp({ title, icon:'📝', type:'file', content: html, ts: Date.now() });
+  addLog('MD_INJECTED_AS_APP: ' + title);
+  await refreshDeck();
+});
+
+/* ---------------------------
+  Export/Import + lifecycle
+   ---------------------------*/
+document.getElementById('exportApps').addEventListener('click', async ()=>{
+  const arr = await getAllApps();
+  const blob = new Blob([JSON.stringify(arr, null, 2)], { type:'application/json' });
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'infodose_apps.json'; a.click();
+  addLog('APPS_EXPORTED');
+});
+document.getElementById('importApps').addEventListener('click', ()=>{
+  const inp = document.createElement('input'); inp.type='file'; inp.accept='application/json';
+  inp.onchange = async e=> {
+    const f = e.target.files[0]; if(!f) return;
+    const txt = await f.text(); try{ const arr = JSON.parse(txt); const tx = db.transaction(DB.store, 'readwrite'); const store = tx.objectStore(DB.store); arr.forEach(it=> store.add(it)); tx.oncomplete = async ()=> { await refreshDeck(); addLog('APPS_IMPORTED'); }; }catch(err){ alert('JSON inválido'); }
+  };
+  inp.click();
+});
+document.getElementById('clearApps').addEventListener('click', async ()=> { if(confirm('Remover todos apps?')){ await clearApps(); await refreshDeck(); addLog('APPS_CLEARED'); } });
+
+/* ---------------------------
+  Boot
+   ---------------------------*/
+(async function boot(){
+  await openDB();
+  await refreshDeck();
+  applyModeUI(); // initial mode
+  addLog('SYSTEM_READY');
+})();
+
+/* persist config */
+document.getElementById('saveCfg').addEventListener('click', ()=>{
+  localStorage.setItem('INF_SK', document.getElementById('skInput').value);
+  addLog('CFG_SAVED');
+});
+
+/* quick key: E toggles edit mode for deck cards (show delete) */
+document.addEventListener('keydown', e=>{ if(e.key.toLowerCase()==='e'){ document.querySelectorAll('.app-card').forEach(c=>c.classList.toggle('edit')); addLog('TOGGLE_EDIT_DECK'); } });
+
+</script>
+</body>
+</html>

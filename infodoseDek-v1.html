@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <title>InfoDose · AppDeck</title>
+  <meta name="theme-color" content="#050811" />
+  
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&family=JetBrains+Mono:wght@400;700&display=swap">
+
+  <style>
+    /* =========================
+       THEME: SOLAR NEBULA
+    ========================= */
+    :root {
+      --bg-deep: #050811;
+      --panel: rgba(20, 24, 35, 0.95);
+      --primary: #00f5ff;
+      --secondary: #ff4bff;
+      --text: #e4ecff;
+      --muted: #6b7280;
+      --danger: #ff4b6b;
+      --glass-border: rgba(255,255,255,0.1);
+    }
+
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+    body {
+      margin: 0; padding: 0;
+      background: var(--bg-deep);
+      color: var(--text);
+      font-family: 'Montserrat', sans-serif;
+      overflow: hidden; /* App feel */
+      display: flex; flex-direction: column;
+      height: 100vh;
+    }
+
+    /* Background FX */
+    .nebula {
+      position: fixed; top: -50%; left: -50%; width: 200%; height: 200%;
+      background: radial-gradient(circle at 50% 50%, rgba(0, 245, 255, 0.03), transparent 60%);
+      z-index: -1; pointer-events: none; animation: pulse 10s infinite alternate;
+    }
+    @keyframes pulse { from { opacity: 0.5; transform: scale(1); } to { opacity: 0.8; transform: scale(1.05); } }
+
+    /* Top Bar */
+    .top-bar {
+      padding: 15px 20px;
+      display: flex; justify-content: space-between; align-items: center;
+      background: linear-gradient(to bottom, rgba(5,8,17,0.95), transparent);
+      z-index: 10; border-bottom: 1px solid rgba(255,255,255,0.05);
+    }
+    .brand { font-weight: 800; letter-spacing: 1px; font-size: 0.9rem; color: var(--text); text-transform: uppercase; }
+    .brand span { color: var(--primary); }
+    .clock { font-family: 'JetBrains Mono', monospace; font-size: 0.8rem; color: var(--primary); opacity: 0.8; }
+
+    /* GRID DE APPS (HOME SCREEN) */
+    .app-grid {
+      flex: 1;
+      overflow-y: auto;
+      padding: 30px 20px;
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+      grid-auto-rows: min-content;
+      gap: 25px 15px;
+      align-content: start;
+    }
+
+    /* APP CARD */
+    .app-card {
+      display: flex; flex-direction: column; align-items: center; gap: 8px;
+      cursor: pointer; position: relative;
+      transition: transform 0.2s;
+      animation: popIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+    .app-card:active { transform: scale(0.92); }
+
+    .app-icon {
+      width: 68px; height: 68px;
+      border-radius: 18px;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid var(--glass-border);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 2rem;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+      position: relative;
+      overflow: hidden;
+      transition: border-color 0.3s;
+    }
+    .app-card:hover .app-icon { border-color: var(--primary); background: rgba(255,255,255,0.06); }
+    
+    .app-name {
+      font-size: 0.7rem; text-align: center; color: var(--text); font-weight: 600;
+      max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      opacity: 0.8; width: 80px;
+    }
+    
+    /* Type Indicators */
+    .type-dot {
+      position: absolute; bottom: 5px; right: 5px;
+      width: 6px; height: 6px; border-radius: 50%;
+      box-shadow: 0 0 5px currentColor;
+    }
+    .type-file { background: var(--secondary); color: var(--secondary); } /* Uploaded */
+    .type-url { background: var(--primary); color: var(--primary); }  /* Link */
+
+    /* Delete Mode */
+    .delete-btn {
+      position: absolute; top: -6px; left: -6px;
+      background: var(--danger); color: white;
+      width: 22px; height: 22px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 14px; border: none; box-shadow: 0 2px 5px rgba(0,0,0,0.5);
+      z-index: 5; transform: scale(0); transition: 0.2s;
+    }
+    body.editing .delete-btn { transform: scale(1); }
+    body.editing .app-card { animation: shake 0.3s infinite; }
+
+    @keyframes shake { 0% { transform: rotate(0deg); } 25% { transform: rotate(1deg); } 75% { transform: rotate(-1deg); } }
+    @keyframes popIn { from{transform:scale(0); opacity:0;} to{transform:scale(1); opacity:1;} }
+
+    /* ADD BUTTON (FAB) */
+    .fab {
+      position: fixed; bottom: 30px; right: 30px;
+      width: 60px; height: 60px; border-radius: 50%;
+      background: var(--primary); color: #000;
+      border: none; box-shadow: 0 0 25px rgba(0, 245, 255, 0.3);
+      font-size: 2rem; display: flex; align-items: center; justify-content: center;
+      cursor: pointer; transition: 0.3s; z-index: 20;
+    }
+    .fab:hover { transform: scale(1.1) rotate(90deg); box-shadow: 0 0 40px rgba(0, 245, 255, 0.6); }
+
+    /* MODAL */
+    .modal-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.8); backdrop-filter: blur(8px);
+      z-index: 100; opacity: 0; pointer-events: none; transition: 0.3s;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .modal-overlay.active { opacity: 1; pointer-events: auto; }
+    
+    .modal-card {
+      width: 90%; max-width: 380px; background: #0f1219;
+      border: 1px solid var(--glass-border); border-radius: 24px;
+      padding: 25px; transform: scale(0.9); transition: 0.3s cubic-bezier(0.19, 1, 0.22, 1);
+      box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+    }
+    .modal-overlay.active .modal-card { transform: scale(1); }
+
+    .modal-title { margin: 0 0 20px 0; font-size: 1.1rem; color: var(--primary); text-align: center; }
+
+    .form-group { margin-bottom: 20px; }
+    .form-label { display: block; font-size: 0.7rem; color: var(--muted); margin-bottom: 8px; letter-spacing: 1px; text-transform: uppercase; font-weight: 700; }
+    .glass-input {
+      width: 100%; background: rgba(255,255,255,0.03); border: 1px solid var(--glass-border);
+      color: white; padding: 12px; border-radius: 12px; outline: none; font-family: inherit; font-size: 0.9rem;
+      transition: 0.3s;
+    }
+    .glass-input:focus { border-color: var(--primary); background: rgba(255,255,255,0.05); }
+    input[type="file"]::file-selector-button {
+      background: var(--panel); color: var(--text); border: 1px solid var(--glass-border);
+      padding: 5px 10px; border-radius: 6px; cursor: pointer; margin-right: 10px;
+    }
+
+    .btn-block {
+      width: 100%; padding: 14px; border-radius: 14px; border: none;
+      font-weight: 700; cursor: pointer; margin-top: 10px; font-size: 0.9rem; letter-spacing: 0.5px;
+    }
+    .btn-save { background: var(--primary); color: #000; box-shadow: 0 5px 20px rgba(0, 245, 255, 0.2); }
+    .btn-cancel { background: transparent; color: var(--muted); border: 1px solid transparent; }
+    .btn-cancel:hover { color: var(--text); }
+
+    /* VIEWER (IFRAME) */
+    .viewer {
+      position: fixed; inset: 0; z-index: 200;
+      background: #000; transform: translateY(100%); transition: transform 0.4s cubic-bezier(0.32, 0.72, 0, 1);
+      display: flex; flex-direction: column;
+    }
+    .viewer.active { transform: translateY(0); }
+    
+    .viewer-bar {
+      height: 50px; background: #0a0a0a; border-bottom: 1px solid #222;
+      display: flex; align-items: center; justify-content: space-between; padding: 0 15px;
+    }
+    .viewer-title { font-size: 0.85rem; font-weight: 600; color: var(--text); }
+    .viewer-close { 
+      background: rgba(255,255,255,0.1); border:none; color:white; 
+      width: 32px; height: 32px; border-radius: 50%; font-size: 1rem; cursor: pointer; 
+      display: flex; align-items: center; justify-content: center;
+    }
+    
+    #appFrame { flex: 1; border: none; background: #fff; width: 100%; height: 100%; }
+
+    /* UTILS */
+    .tabs { display: flex; gap: 5px; margin-bottom: 20px; background: rgba(255,255,255,0.03); padding: 5px; border-radius: 12px; }
+    .tab { flex: 1; padding: 10px; background: transparent; border: none; color: var(--muted); border-radius: 8px; cursor: pointer; font-size: 0.8rem; font-weight: 600; transition: 0.3s; }
+    .tab.active { background: rgba(255,255,255,0.1); color: var(--text); }
+    
+    .emoji-picker { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 5px; scrollbar-width: none; }
+    .emoji-opt { min-width: 45px; height: 45px; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; cursor: pointer; border-radius: 12px; border: 1px solid transparent; background: rgba(255,255,255,0.02); transition: 0.2s; }
+    .emoji-opt.selected { background: rgba(0, 245, 255, 0.1); border-color: var(--primary); transform: translateY(-2px); }
+
+    /* Empty State */
+    .empty-state {
+        grid-column: 1 / -1; text-align: center; color: var(--muted); margin-top: 100px;
+        display: flex; flex-direction: column; align-items: center; gap: 15px;
+    }
+    .empty-icon { font-size: 3rem; opacity: 0.3; }
+
+  </style>
+</head>
+<body>
+
+  <div class="nebula"></div>
+
+  <div class="top-bar">
+    <div class="brand">InfoDose <span>Deck</span></div>
+    <div class="clock" id="clock">00:00</div>
+  </div>
+
+  <div class="app-grid" id="appGrid">
+    </div>
+
+  <button class="fab" onclick="UI.openModal()">+</button>
+
+  <div class="modal-overlay" id="addModal">
+    <div class="modal-card">
+      <h3 class="modal-title">Novo Módulo Neural</h3>
+      
+      <div class="tabs">
+        <button class="tab active" onclick="UI.setTab('file')">Arquivo .HTML</button>
+        <button class="tab" onclick="UI.setTab('url')">Link Web</button>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Nome do App</label>
+        <input type="text" id="appName" class="glass-input" placeholder="Ex: Dashboard V1" autocomplete="off">
+      </div>
+
+      <div id="inputTypeFile" class="form-group">
+        <label class="form-label">Arquivo (Salvo Localmente)</label>
+        <input type="file" id="appFile" class="glass-input" accept=".html">
+      </div>
+
+      <div id="inputTypeUrl" class="form-group" style="display:none;">
+        <label class="form-label">URL (https://)</label>
+        <input type="url" id="appUrl" class="glass-input" placeholder="https://app.com">
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Ícone</label>
+        <div class="emoji-picker" id="emojiPicker">
+          </div>
+        <input type="hidden" id="selectedIcon" value="⚡">
+      </div>
+
+      <button class="btn-block btn-save" onclick="Engine.saveApp()">Cristalizar App</button>
+      <button class="btn-block btn-cancel" onclick="UI.closeModal()">Cancelar</button>
+    </div>
+  </div>
+
+  <div class="viewer" id="viewer">
+    <div class="viewer-bar">
+      <div class="viewer-title" id="viewTitle">App Running</div>
+      <button class="viewer-close" onclick="UI.closeViewer()">✕</button>
+    </div>
+    <iframe id="appFrame" sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals allow-downloads"></iframe>
+  </div>
+
+<script>
+/* =========================================================
+   INFODOSE ENGINE: INDEXED DB + BLOB URLs
+   Isso permite salvar arquivos HTML inteiros dentro do navegador.
+========================================================= */
+
+const DB_CONFIG = { name: 'InfoDoseDeckDB', version: 1, store: 'apps' };
+
+const Engine = {
+  db: null,
+
+  init() {
+    return new Promise((resolve, reject) => {
+      const req = indexedDB.open(DB_CONFIG.name, DB_CONFIG.version);
+      
+      req.onupgradeneeded = (e) => {
+        const db = e.target.result;
+        if (!db.objectStoreNames.contains(DB_CONFIG.store)) {
+          db.createObjectStore(DB_CONFIG.store, { keyPath: 'id', autoIncrement: true });
+        }
+      };
+
+      req.onsuccess = (e) => {
+        this.db = e.target.result;
+        this.loadApps();
+        resolve();
+      };
+      
+      req.onerror = (e) => console.error("Falha Crítica no DB", e);
+    });
+  },
+
+  async saveApp() {
+    const name = document.getElementById('appName').value.trim() || 'App Sem Nome';
+    const icon = document.getElementById('selectedIcon').value;
+    const mode = document.querySelector('.tab.active').innerText.includes('Arquivo') ? 'file' : 'url';
+    
+    let appData = {
+      title: name,
+      icon: icon,
+      type: mode,
+      timestamp: Date.now()
+    };
+
+    if (mode === 'file') {
+      const fileInput = document.getElementById('appFile');
+      const file = fileInput.files[0];
+      if (!file) return alert("Por favor, selecione um arquivo HTML.");
+      
+      // Lê o arquivo como texto para armazenar no IndexedDB
+      // Isso evita problemas de segurança de alguns navegadores com Blobs diretos
+      const text = await file.text();
+      appData.content = text;
+    } else {
+      const url = document.getElementById('appUrl').value.trim();
+      if (!url) return alert("Por favor, digite uma URL válida.");
+      appData.content = url;
+    }
+
+    const tx = this.db.transaction(DB_CONFIG.store, 'readwrite');
+    tx.objectStore(DB_CONFIG.store).add(appData);
+    
+    tx.oncomplete = () => {
+      UI.closeModal();
+      this.loadApps();
+      UI.resetForm();
+    };
+  },
+
+  loadApps() {
+    const tx = this.db.transaction(DB_CONFIG.store, 'readonly');
+    const store = tx.objectStore(DB_CONFIG.store);
+    const req = store.getAll();
+
+    req.onsuccess = () => {
+      UI.renderGrid(req.result);
+    };
+  },
+
+  deleteApp(id) {
+    if(!confirm("Desintegrar este módulo permanentemente?")) return;
+    const tx = this.db.transaction(DB_CONFIG.store, 'readwrite');
+    tx.objectStore(DB_CONFIG.store).delete(id);
+    tx.oncomplete = () => {
+        this.loadApps();
+        // Se ficou vazio, sai do modo edição
+        document.body.classList.remove('editing');
+    };
+  },
+
+  launchApp(id) {
+    const tx = this.db.transaction(DB_CONFIG.store, 'readonly');
+    const store = tx.objectStore(DB_CONFIG.store);
+    const req = store.get(id);
+
+    req.onsuccess = () => {
+      const app = req.result;
+      if (!app) return;
+
+      let finalUrl;
+      
+      if (app.type === 'file') {
+        // A Mágica: Cria um Blob URL temporário do conteúdo salvo
+        const blob = new Blob([app.content], { type: 'text/html' });
+        finalUrl = URL.createObjectURL(blob);
+      } else {
+        finalUrl = app.content;
+      }
+
+      UI.openViewer(app.title, finalUrl);
+    };
+  }
+};
+
+/* =========================================================
+   UI MANAGER
+========================================================= */
+const UI = {
+  grid: document.getElementById('appGrid'),
+  longPressTimer: null,
+  isLongPress: false,
+
+  init() {
+    this.updateClock();
+    setInterval(() => this.updateClock(), 1000);
+    this.setupEmojiPicker();
+    
+    // Fechar modal clicando fora
+    document.getElementById('addModal').addEventListener('click', (e) => {
+      if(e.target === document.getElementById('addModal')) this.closeModal();
+    });
+
+    // Clique fora pra sair do modo edição
+    document.body.addEventListener('click', (e) => {
+        if(!e.target.closest('.app-card') && !e.target.closest('.delete-btn')) {
+            document.body.classList.remove('editing');
+        }
+    });
+  },
+
+  updateClock() {
+    const d = new Date();
+    document.getElementById('clock').textContent = d.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+  },
+
+  setupEmojiPicker() {
+    const emojis = ['⚡', '🧠', '💾', '🎮', '📊', '📝', '💎', '🔥', '🪐', '🤖', '📱', '🎵', '👁️', '💠', '🚀'];
+    const container = document.getElementById('emojiPicker');
+    
+    emojis.forEach((emoji, idx) => {
+      const el = document.createElement('div');
+      el.className = `emoji-opt ${idx===0 ? 'selected' : ''}`;
+      el.textContent = emoji;
+      el.onclick = () => {
+        document.querySelectorAll('.emoji-opt').forEach(e => e.classList.remove('selected'));
+        el.classList.add('selected');
+        document.getElementById('selectedIcon').value = emoji;
+      };
+      container.appendChild(el);
+    });
+  },
+
+  renderGrid(apps) {
+    this.grid.innerHTML = '';
+    
+    if (apps.length === 0) {
+      this.grid.innerHTML = `
+        <div class="empty-state">
+            <div class="empty-icon">💠</div>
+            <div>Deck Vazio.<br>Adicione seu primeiro módulo.</div>
+        </div>
+      `;
+      return;
+    }
+
+    apps.forEach(app => {
+      const card = document.createElement('div');
+      card.className = 'app-card';
+      // HTML seguro
+      const safeTitle = app.title.replace(/</g, "&lt;");
+      
+      card.innerHTML = `
+        <button class="delete-btn" onclick="event.stopPropagation(); Engine.deleteApp(${app.id})">✕</button>
+        <div class="app-icon">
+          ${app.icon}
+          <div class="type-dot type-${app.type}"></div>
+        </div>
+        <div class="app-name">${safeTitle}</div>
+      `;
+
+      // Logica de Clique vs Long Press (Igual Android/iOS)
+      const startPress = () => {
+        this.isLongPress = false;
+        this.longPressTimer = setTimeout(() => {
+            this.isLongPress = true;
+            document.body.classList.add('editing');
+            // Vibrar se suportado
+            if(navigator.vibrate) navigator.vibrate(50);
+        }, 600);
+      };
+
+      const endPress = () => {
+        clearTimeout(this.longPressTimer);
+      };
+
+      card.onmousedown = card.ontouchstart = startPress;
+      card.onmouseup = card.ontouchend = card.onmouseleave = endPress;
+
+      card.onclick = (e) => {
+        if (this.isLongPress) return; // Se foi long press, ignora click
+        if (document.body.classList.contains('editing')) {
+            // Se estiver editando, clique fora para sair, mas clique no card não faz nada (ou faz shake)
+            document.body.classList.remove('editing');
+            return;
+        }
+        Engine.launchApp(app.id);
+      };
+
+      this.grid.appendChild(card);
+    });
+  },
+
+  openModal() {
+    document.getElementById('addModal').classList.add('active');
+    document.body.classList.remove('editing');
+  },
+
+  closeModal() {
+    document.getElementById('addModal').classList.remove('active');
+  },
+
+  setTab(mode) {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    event.target.classList.add('active');
+    
+    if(mode === 'file') {
+      document.getElementById('inputTypeFile').style.display = 'block';
+      document.getElementById('inputTypeUrl').style.display = 'none';
+    } else {
+      document.getElementById('inputTypeFile').style.display = 'none';
+      document.getElementById('inputTypeUrl').style.display = 'block';
+    }
+  },
+
+  resetForm() {
+    document.getElementById('appName').value = '';
+    document.getElementById('appUrl').value = '';
+    document.getElementById('appFile').value = '';
+  },
+
+  openViewer(title, url) {
+    document.getElementById('viewTitle').textContent = title;
+    document.getElementById('appFrame').src = url;
+    document.getElementById('viewer').classList.add('active');
+  },
+
+  closeViewer() {
+    document.getElementById('viewer').classList.remove('active');
+    // Limpa o src após animação para economizar memória e parar scripts
+    setTimeout(() => {
+        document.getElementById('appFrame').src = 'about:blank';
+    }, 400);
+  }
+};
+
+// --- BOOT ---
+window.onload = () => {
+  UI.init();
+  Engine.init();
+};
+
+</script>
+</body>
+</html>

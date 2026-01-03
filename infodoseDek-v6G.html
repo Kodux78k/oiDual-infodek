@@ -1,0 +1,537 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Dual.Infodose — Monólito</title>
+
+<!-- Lucide icons CDN -->
+<script src="https://unpkg.com/lucide@latest"></script>
+
+<style>
+  :root{
+    --bg:#020406;
+    --text:#e6eef6;
+    --panel: rgba(255,255,255,0.05);
+    --panel-border: rgba(255,255,255,0.10);
+    --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, "Roboto Mono", "Courier New", monospace;
+  }
+  html,body{height:100%;margin:0;background:var(--bg);color:var(--text);font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,"Helvetica Neue",Arial;}
+  .app{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;box-sizing:border-box;overflow:hidden;position:relative;user-select:text;}
+  .glow{position:fixed;inset:0;pointer-events:none;opacity:.28;z-index:0;border-radius:0}
+  .container{width:100%;max-width:1200px;display:grid;grid-template-columns:1fr;gap:18px;z-index:10}
+  @media(min-width:1024px){ .container{grid-template-columns:1fr 400px;} }
+
+  /* Left monolith */
+  .monolith{display:none;flex-direction:column;gap:16px;background:rgba(255,255,255,0.04);border:1px solid var(--panel-border);border-radius:24px;padding:20px;height:700px;backdrop-filter:blur(8px)}
+  @media(min-width:1024px){ .monolith{display:flex} }
+
+  .monolith .head{display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid rgba(255,255,255,0.04);padding-bottom:12px}
+  .mono-title{display:flex;gap:10px;align-items:center}
+  .mono-title h2{font-size:13px;margin:0;letter-spacing:.06em}
+  .status-pill{font-family:var(--mono);font-size:11px;background:rgba(255,255,255,0.04);padding:6px 8px;border-radius:8px;border:1px solid rgba(255,255,255,0.06)}
+
+  .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:8px}
+  label.small{font-size:10px;font-weight:700;opacity:.55;display:block;margin-bottom:6px}
+  input,select{width:100%;background:rgba(0,0,0,0.4);border:1px solid rgba(255,255,255,0.04);padding:10px;border-radius:12px;color:var(--text);outline:none;font-size:13px;box-sizing: border-box;}
+  select{appearance:none;padding-right:28px}
+
+  .log-area{flex:1;background:rgba(0,0,0,0.28);border:1px solid rgba(255,255,255,0.04);border-radius:16px;padding:12px;overflow:auto;font-family:var(--mono);font-size:12px}
+  .log-item{display:flex;gap:10px;margin-bottom:8px}
+  .log-item .time{opacity:.35}
+  .log-item .msg{color:#9aa6b3;white-space:pre-wrap}
+  .log-item.exec .msg{color:#3dd5ff}
+
+  .monolith .buttons{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:10px;border-radius:12px;border:none;cursor:pointer;font-weight:700;font-size:12px}
+  .btn.save{background: #ffffff;color:#000}
+  .btn.danger{background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.06);color:var(--text)}
+  .btn.danger:hover{background:rgba(255,0,0,0.08)}
+
+  /* Right card */
+  .card-wrap{display:flex;flex-direction:column;gap:12px}
+  .card{background:rgba(0,0,0,0.60);border:1px solid rgba(255,255,255,0.08);border-radius:32px;overflow:hidden;backdrop-filter:blur(10px);transition:all .5s;box-shadow:0 20px 60px -20px rgba(0,0,0,0.8)}
+  .card.collapsed{height:80px}
+  .card-header{display:flex;align-items:center;justify-content:space-between;padding:18px;cursor:pointer}
+  .brand h1{margin:0;font-weight:300;font-size:18px}
+  .brand b{font-weight:800}
+  .pill{font-family:var(--mono);font-size:10px;letter-spacing:.18em}
+  .controls{display:flex;align-items:center;gap:8px}
+
+  .icon-btn{padding:8px;border-radius:12px;border:none;background:rgba(255,255,255,0.04);display:inline-flex;align-items:center;justify-content:center;cursor:pointer;color:white;}
+  .icon-btn.active{background: #06d6ff;color:#000}
+  .chev{transition:transform .45s}
+  .chev.rot{transform:rotate(180deg)}
+
+  .card-body{padding:24px 28px 28px;opacity:1;transition:opacity .4s}
+  .card-body.hidden{opacity:0;height:0;padding:0 28px}
+
+  .profile{display:flex;flex-direction:column;align-items:center;gap:10px}
+  .avatar-wrap{position:relative}
+  .avatar{width:96px;height:96px;border-radius:50%;border:2px dashed;display:flex;align-items:center;justify-content:center;font-size:32px;font-weight:900;background:rgba(0,0,0,0.4)}
+  .lvl{position:absolute;right:-8px;bottom:-8px;background:rgba(0,0,0,0.6);border:1px solid rgba(255,255,255,0.06);padding:4px 8px;border-radius:8px;font-family:var(--mono);font-size:11px}
+
+  .controls-block{padding:10px 0;display:flex;flex-direction:column;gap:10px}
+  .label-row{display:flex;justify-content:space-between;align-items:flex-end}
+  .input-line{display:flex;gap:10px;align-items:center;background:rgba(255,255,255,0.03);padding:12px;border-radius:16px;border:1px solid rgba(255,255,255,0.04)}
+  .input-line input[type="text"]{background:transparent;border:none;outline:none;color:#fff;font-weight:700;font-size:14px;width:100%}
+
+  .progress-segs{display:flex;gap:6px;height:8px}
+  .seg{flex:1;background:rgba(255,255,255,0.03);border-radius:999px;overflow:hidden}
+  .seg .fill{height:100%;width:0%;transition:width 1s ease}
+
+  .revealed{transition:max-height .7s,opacity .7s;overflow:hidden}
+  .revealed.hidden{max-height:0;opacity:0}
+  .revealed.show{max-height:500px;opacity:1}
+
+  .reveal-box{background:rgba(0,0,0,0.6);padding:12px;border-radius:14px;border:1px solid rgba(255,255,255,0.04);font-family:var(--mono);font-size:12px;line-height:1.4}
+  .action-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-top:10px}
+  .btn.small{padding:10px;font-size:11px;border-radius:12px}
+
+  .mobile-only{display:block}
+  @media(min-width:1024px){ .mobile-only{display:none} }
+
+  .credit{text-align:center;font-family:var(--mono);font-size:10px;opacity:.18;letter-spacing:.25em}
+
+  /* Toast */
+  .toast{position:fixed;left:50%;transform:translateX(-50%) translateY(10px);bottom:24px;background:#06d6ff;color:#000;padding:10px 18px;border-radius:999px;font-weight:900;font-family:var(--mono);font-size:11px;opacity:0;pointer-events:none;transition:all .45s}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0);pointer-events:auto}
+
+  /* scrollbars small */
+  .log-area::-webkit-scrollbar{height:8px;width:8px}
+  .log-area::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.04);border-radius:8px}
+</style>
+</head>
+<body>
+<div class="app">
+  <div id="bgGlow" class="glow"></div>
+
+  <div class="container">
+
+    <!-- LEFT: Monolith -->
+    <div class="monolith" id="monolithPanel" aria-hidden="false">
+      <div class="head">
+        <div class="mono-title">
+          <i data-lucide="server" style="width:18px;height:18px;"></i>
+          <h2>Painel Monólito KOBLLUX</h2>
+        </div>
+        <div class="status-pill" id="monoStatus">STATUS: IDLE</div>
+      </div>
+
+      <div class="grid-2">
+        <div>
+          <label class="small">OpenRouter Key</label>
+          <input id="skInput" type="password" placeholder="sk-...">
+        </div>
+        <div>
+          <label class="small">Modelo Ativo</label>
+          <select id="modelSelect">
+            <option value="deepseek/deepseek-chat">DeepSeek V3</option>
+            <option value="meta-llama/llama-3-70b">LLaMA 3 70B</option>
+            <option value="anthropic/claude-3-haiku">Claude 3 Haiku</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="log-area" id="logs">
+        <!-- logs go here -->
+      </div>
+
+      <div class="buttons">
+        <button class="btn save" id="saveBtn" title="Salvar Config"><i data-lucide="save" style="width:16px;"></i> Salvar Config</button>
+        <button class="btn danger" id="clearLogsBtn" title="Limpar Logs"><i data-lucide="trash-2" style="width:16px;"></i> Limpar Logs</button>
+      </div>
+    </div>
+
+    <!-- RIGHT: Card -->
+    <div class="card-wrap">
+      <div id="card" class="card collapsed" role="region" aria-label="Dual Infodose Card">
+        <div class="card-header" id="cardHeader" title="Clique para abrir/fechar">
+          <div>
+            <div class="brand"><h1>Dual.<b id="brandAccent">Infodose</b></h1>
+            <p class="pill" id="identityText">Interface Locked</p></div>
+          </div>
+
+          <div class="controls">
+            <button id="micBtn" class="icon-btn" aria-pressed="false" title="Ativar/Desativar voz"><i data-lucide="mic"></i></button>
+            <button id="chevBtn" class="icon-btn chev" title="Abrir/Fechar"><i data-lucide="chevron-down"></i></button>
+          </div>
+        </div>
+
+        <div id="cardBody" class="card-body hidden">
+          <div class="profile">
+            <div class="avatar-wrap">
+              <div id="avatar" class="avatar">??</div>
+              <div class="lvl">LVL_5.3</div>
+            </div>
+          </div>
+
+          <div class="controls-block">
+            <div class="label-row">
+              <span style="font-size:10px;font-weight:800;opacity:.45;letter-spacing:.06em">Neural Codename</span>
+              <span id="syncText" style="font-family:var(--mono);font-weight:800;font-size:11px">0% SYNC</span>
+            </div>
+
+            <div class="input-line">
+              <input id="userInput" type="text" placeholder="Quem é você?">
+            </div>
+
+            <div class="progress-segs" id="progressSegs">
+              <div class="seg"><div class="fill" data-step="0"></div></div>
+              <div class="seg"><div class="fill" data-step="20"></div></div>
+              <div class="seg"><div class="fill" data-step="40"></div></div>
+              <div class="seg"><div class="fill" data-step="60"></div></div>
+              <div class="seg"><div class="fill" data-step="80"></div></div>
+            </div>
+          </div>
+
+          <div id="revealedSection" class="revealed hidden">
+            <div class="reveal-box">
+              <div style="position:absolute;right:10px;top:6px;opacity:.18"><i data-lucide="database" style="width:14px;"></i></div>
+              <p style="color:#3dd5ff;margin:0 0 8px 0">[ QUANTUM TOKEN ]</p>
+              <div id="activationInfo">ID: _SONIC_5.3<br>STATUS: CONNECTION_STABLE<br>ENCRYPTION: AES_256_KOBLLUX<br><span style="color:#ff69b4">PROMPT: ATIVAR_MODO_IA</span></div>
+            </div>
+
+            <div class="action-grid">
+              <button class="btn small" id="copyBtn"><i data-lucide="copy" style="width:14px;"></i> Copiar Ativação</button>
+              <button class="btn small" id="pngBtn" title="Gerar PNG"><i data-lucide="image" style="width:14px;"></i> PNG</button>
+              <button class="btn small" id="shareBtn" title="Compartilhar"><i data-lucide="share" style="width:14px;"></i> Share</button>
+              <div></div>
+            </div>
+          </div>
+
+          <div class="mobile-only" style="padding-top:12px;border-top:1px solid rgba(255,255,255,0.04);margin-top:12px">
+            <button class="btn danger" id="monolithSettingsBtn"><i data-lucide="settings" style="width:14px;"></i> Monolith Settings</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="credit">KOBLLUX · Senior Dev Mode · 2025</div>
+    </div>
+
+  </div>
+
+  <div id="fusion_toast" class="toast"><i data-lucide="check" style="width:14px; vertical-align:middle;margin-right:6px"></i> Ação Concluída</div>
+</div>
+
+<script>
+/* ========== Init icons ========== */
+document.addEventListener('DOMContentLoaded', ()=>{
+  if(window.lucide) lucide.createIcons();
+});
+
+/* ========== State & DOM refs ========== */
+const logsEl = document.getElementById('logs');
+const skInput = document.getElementById('skInput');
+const modelSelect = document.getElementById('modelSelect');
+const saveBtn = document.getElementById('saveBtn');
+const clearLogsBtn = document.getElementById('clearLogsBtn');
+
+const card = document.getElementById('card');
+const cardHeader = document.getElementById('cardHeader');
+const chevBtn = document.getElementById('chevBtn');
+const cardBody = document.getElementById('cardBody');
+const micBtn = document.getElementById('micBtn');
+
+const userInputEl = document.getElementById('userInput');
+const avatarEl = document.getElementById('avatar');
+const syncText = document.getElementById('syncText');
+const progressFills = document.querySelectorAll('.fill');
+const identityText = document.getElementById('identityText');
+const revealedSection = document.getElementById('revealedSection');
+const activationInfo = document.getElementById('activationInfo');
+const copyBtn = document.getElementById('copyBtn');
+const pngBtn = document.getElementById('pngBtn');
+const shareBtn = document.getElementById('shareBtn');
+const monolithSettingsBtn = document.getElementById('monolithSettingsBtn');
+const monoStatus = document.getElementById('monoStatus');
+const brandAccent = document.getElementById('brandAccent');
+const bgGlow = document.getElementById('bgGlow');
+const toast = document.getElementById('fusion_toast');
+
+/* ========== LocalStorage keys & initial state ========== */
+const LS = {
+  SK: 'INFODOSE_OPENROUTER_SK',
+  MODEL: 'INFODOSE_OPENROUTER_MODEL',
+  USER: 'fusion_user',
+  VOICE_URI: 'fusion_voice_uri',
+  VOICE_PITCH: 'fusion_voice_pitch',
+  VOICE_RATE: 'fusion_voice_rate'
+};
+
+let logs = [{time: (new Date()).toLocaleTimeString(), msg: "SYSTEM_READY // V5.3"}];
+let voiceEnabled = false;
+let revealed = false;
+let sync = 0;
+let voices = [];
+let selectedVoice = localStorage.getItem(LS.VOICE_URI) || '';
+let pitch = parseFloat(localStorage.getItem(LS.VOICE_PITCH) || '0.9');
+let rate = parseFloat(localStorage.getItem(LS.VOICE_RATE) || '1.1');
+const synth = window.speechSynthesis || null;
+
+/* ========== Load persisted values ========== */
+skInput.value = localStorage.getItem(LS.SK) || '';
+modelSelect.value = localStorage.getItem(LS.MODEL) || 'deepseek/deepseek-chat';
+userInputEl.value = localStorage.getItem(LS.USER) || '';
+
+// initialize UI based on stored user
+updateAllFromUser(userInputEl.value);
+
+/* ========== Helpers ========== */
+function addLog(msg){
+  const time = (new Date()).toLocaleTimeString();
+  logs.unshift({time,msg});
+  if(logs.length>100) logs = logs.slice(0,100);
+  renderLogs();
+}
+
+function renderLogs(){
+  logsEl.innerHTML = '';
+  for(let i=0;i<logs.length;i++){
+    const it = logs[i];
+    const div = document.createElement('div');
+    div.className = 'log-item' + (it.msg.includes('EXEC') ? ' exec' : '');
+    div.innerHTML = '<div class="time">['+it.time+']</div><div class="msg">'+escapeHtml(it.msg)+'</div>';
+    logsEl.appendChild(div);
+  }
+}
+
+/* small html escape */
+function escapeHtml(s){ return String(s).replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+
+/* Theme color generator (same algorithm from React) */
+function getThemeColor(text){
+  if(!text) return '#4fd4ff';
+  let h = 0;
+  for(let i=0;i<text.length;i++) h = text.charCodeAt(i) + ((h<<5)-h);
+  const hue = Math.abs(h%360);
+  return `hsl(${hue}, 70%, 55%)`;
+}
+
+/* Apply accent color to relevant UI pieces */
+function applyAccent(text){
+  const accent = getThemeColor(text);
+  brandAccent.style.color = accent;
+  // avatar border + bg radial
+  avatarEl.style.borderColor = accent;
+  avatarEl.style.color = accent;
+  bgGlow.style.background = `radial-gradient(circle at 50% 50%, ${hexWithAlpha(accent,0.07)} 0%, transparent 70%)`;
+}
+
+/* Convert hsl or hex to rgba-ish by adding alpha (we'll wrap accent color string with 11 hex if provided) */
+function hexWithAlpha(hslStr, alpha){
+  // naive: if hsl string, return hsla
+  if(hslStr.startsWith('hsl')){
+    return hslStr.replace('hsl','hsla').replace(')',', '+(alpha)+')');
+  }
+  // fallback: return transparent
+  return hslStr;
+}
+
+/* update sync visual */
+function updateSyncFromInput(text){
+  const s = Math.min(Math.round((text.length/12)*100),100);
+  sync = s;
+  syncText.textContent = `${s}% SYNC`;
+  progressFills.forEach(el=>{
+    const step = parseInt(el.getAttribute('data-step'));
+    if(s>step) el.style.width='100%'; else el.style.width='0%';
+    el.style.background = getThemeColor(text);
+  });
+}
+
+/* revealed rule: if s >=30 revealed true */
+function computeRevealed(){
+  if(sync >= 30 && !revealed){
+    revealed = true;
+    addLog("IDENTITY_CONFIRMED: Access Granted");
+    revealedSection.classList.remove('hidden');
+    revealedSection.classList.add('show');
+    monoStatus.textContent = 'STATUS: STABLE';
+    identityText.textContent = 'Identity Confirmed';
+  } else if (sync < 30 && revealed){
+    revealed = false;
+    addLog("IDENTITY_LOST: Interface Locked");
+    revealedSection.classList.add('hidden');
+    revealedSection.classList.remove('show');
+    monoStatus.textContent = 'STATUS: IDLE';
+    identityText.textContent = 'Interface Locked';
+  }
+}
+
+/* update avatar letters */
+function updateAvatar(text){
+  const s = (text||'').trim();
+  avatarEl.textContent = s ? s.substring(0,2).toUpperCase() : '??';
+}
+
+/* show toast */
+let toastTimer = null;
+function showToast(text='Ação Concluída', ms=2200){
+  toast.innerHTML = '<i data-lucide="check" style="width:14px; vertical-align:middle;margin-right:6px"></i>' + text;
+  lucide.createIcons(); // refresh icon in toast
+  toast.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>{ toast.classList.remove('show'); }, ms);
+}
+
+/* speak */
+function speak(text){
+  if(!voiceEnabled || !synth) return;
+  synth.cancel();
+  const utter = new SpeechSynthesisUtterance(text);
+  let voice = voices.find(v=>v.voiceURI===selectedVoice) || voices.find(v=>v.lang && v.lang.includes('pt-BR')) || voices[0];
+  if(voice) utter.voice = voice;
+  utter.pitch = pitch;
+  utter.rate = rate;
+  utter.onstart = ()=>{ micBtn.classList.add('active'); micBtn.setAttribute('aria-pressed','true'); }
+  utter.onend = ()=>{ micBtn.classList.remove('active'); micBtn.setAttribute('aria-pressed','false'); }
+  synth.speak(utter);
+  addLog(`TTS_EXEC: "${text.substring(0,20)}..."`);
+}
+
+/* toggle voice */
+function toggleVoice(){
+  voiceEnabled = !voiceEnabled;
+  if(voiceEnabled){
+    speak("Voz ativa.");
+    addLog("VOICE_ONLINE");
+    micBtn.classList.add('active');
+    micBtn.setAttribute('aria-pressed','true');
+  } else {
+    if(synth) synth.cancel();
+    micBtn.classList.remove('active');
+    micBtn.setAttribute('aria-pressed','false');
+    addLog("VOICE_OFFLINE");
+  }
+}
+
+/* save config */
+function saveConfig(){
+  localStorage.setItem(LS.SK, skInput.value);
+  localStorage.setItem(LS.MODEL, modelSelect.value);
+  localStorage.setItem(LS.USER, userInputEl.value);
+  localStorage.setItem(LS.VOICE_URI, selectedVoice);
+  localStorage.setItem(LS.VOICE_PITCH, String(pitch));
+  localStorage.setItem(LS.VOICE_RATE, String(rate));
+  addLog("CONFIG_SAVED: LocalStorage updated");
+  showToast('Config salva');
+}
+
+/* copy activation */
+function copyActivation(){
+  const id = (userInputEl.value || '').toUpperCase().replace(/\s/g,'_') + '_SONIC_5.3';
+  navigator.clipboard?.writeText(id).then(()=>{ showToast('ID copiado'); addLog('ACTIVATION_COPIED'); }, ()=>{ showToast('Falha ao copiar'); });
+}
+
+/* placeholder PNG/Share */
+function pngAction(){ addLog('PNG_REQUESTED'); showToast('PNG gerado (simulado)'); }
+function shareAction(){ addLog('SHARE_REQUESTED'); showToast('Compartilhar (simulado)'); }
+
+/* mobile monolith settings */
+function mobileMonolithSettings(){ addLog("MOBILE_CONFIG_REQUESTED"); showToast('Monolith settings'); }
+
+/* toggle card open */
+let isCardOpen = false;
+function toggleCard(){
+  isCardOpen = !isCardOpen;
+  if(isCardOpen){
+    card.classList.remove('collapsed');
+    cardBody.classList.remove('hidden');
+    chevBtn.classList.add('rot');
+  } else {
+    card.classList.add('collapsed');
+    cardBody.classList.add('hidden');
+    chevBtn.classList.remove('rot');
+  }
+}
+
+/* voice list loader */
+function loadVoices(){
+  if(!synth) return;
+  voices = synth.getVoices() || [];
+  // It's ok if voices are empty at first; onvoiceschanged will fire later
+  // let selected = selectedVoice || (voices.find(v=>v.lang && v.lang.includes('pt-BR'))?.voiceURI || '');
+  // store selectedVoice if not set
+}
+
+/* update many things based on input */
+function updateAllFromUser(text){
+  applyAccent(text);
+  updateAvatar(text);
+  updateSyncFromInput(text);
+  computeRevealed();
+  activationInfo.innerHTML = 'ID: ' + ((text||'').toUpperCase().replace(/\s/g,'_') || '_SONIC_5.3') + '<br>STATUS: CONNECTION_STABLE<br>ENCRYPTION: AES_256_KOBLLUX<br><span style="color:#ff69b4">PROMPT: ATIVAR_MODO_IA</span>';
+}
+
+/* ========== Event listeners ========== */
+cardHeader.addEventListener('click', (e)=>{
+  // if click on mic button or other control, ignore (they have stopPropagation below)
+  toggleCard();
+});
+
+chevBtn.addEventListener('click', (e)=>{ e.stopPropagation(); toggleCard(); });
+
+micBtn.addEventListener('click', (e)=>{ e.stopPropagation(); toggleVoice(); });
+
+saveBtn.addEventListener('click', saveConfig);
+clearLogsBtn.addEventListener('click', ()=>{ logs=[{time:(new Date()).toLocaleTimeString(),msg:"LOGS_CLEARED"}]; renderLogs(); });
+
+userInputEl.addEventListener('input', (e)=>{
+  const v = e.target.value;
+  localStorage.setItem(LS.USER, v);
+  updateAllFromUser(v);
+});
+
+/* stop propagation for icon button clicks within header to avoid toggling card */
+[micBtn, chevBtn].forEach(btn=> btn.addEventListener('click', ev=> ev.stopPropagation()));
+
+/* copy / png / share */
+copyBtn.addEventListener('click', copyActivation);
+pngBtn.addEventListener('click', pngAction);
+shareBtn.addEventListener('click', shareAction);
+monolithSettingsBtn.addEventListener('click', mobileMonolithSettings);
+
+/* monolith sk/model persistence immediate update */
+skInput.addEventListener('input', ()=>{ /* not auto-saved until saveConfig */ });
+modelSelect.addEventListener('change', ()=>{ /* not auto-saved until saveConfig */ });
+
+/* ========== Speech voices init handling ========== */
+if(synth){
+  const load = ()=>{
+    loadVoices();
+    // selectedVoice already from localStorage
+    addLog('VOICES_LOADED: ' + (synth.getVoices().length) + ' voices');
+  };
+  load();
+  synth.onvoiceschanged = load;
+}
+
+/* initialize logs */
+renderLogs();
+
+/* initial accent */
+applyAccent(userInputEl.value || '');
+updateSyncFromInput(userInputEl.value || '');
+computeRevealed();
+
+/* ========== Utility: keyboard enter to speak / play action ========== */
+userInputEl.addEventListener('keydown', (e)=>{
+  if(e.key === 'Enter'){
+    // on enter, if revealed, copy activation; else speak the input
+    if(revealed){
+      copyActivation();
+    } else {
+      speak(userInputEl.value || 'Olá');
+    }
+  }
+});
+
+/* expose some functions to window for debugging (optional) */
+window.__infodose = {
+  addLog, saveConfig, speak, toggleVoice, updateAllFromUser
+};
+</script>
+</body>
+</html>
+

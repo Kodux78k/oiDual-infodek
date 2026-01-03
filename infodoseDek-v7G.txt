@@ -1,0 +1,694 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Dual.Infodose — Monólito (Infodose AppDeck integrado)</title>
+
+<!-- Lucide icons CDN -->
+<script src="https://unpkg.com/lucide@latest"></script>
+
+<style>
+  :root{
+    --bg:#020406;
+    --text:#e6eef6;
+    --panel: rgba(255,255,255,0.05);
+    --panel-border: rgba(255,255,255,0.10);
+    --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, "Roboto Mono", "Courier New", monospace;
+    --primary: #06d6ff;
+  }
+  html,body{height:100%;margin:0;background:var(--bg);color:var(--text);font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,"Helvetica Neue",Arial;}
+  .app{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;box-sizing:border-box;overflow:hidden;position:relative;user-select:text;}
+  .glow{position:fixed;inset:0;pointer-events:none;opacity:.28;z-index:0;border-radius:0}
+  .container{width:100%;max-width:1200px;display:grid;grid-template-columns:1fr;gap:18px;z-index:10}
+  @media(min-width:1024px){ .container{grid-template-columns:1fr 420px;} }
+
+  /* Left monolith */
+  .monolith{display:none;flex-direction:column;gap:16px;background:rgba(255,255,255,0.04);border:1px solid var(--panel-border);border-radius:24px;padding:20px;height:700px;backdrop-filter:blur(8px)}
+  @media(min-width:1024px){ .monolith{display:flex} }
+
+  .monolith .head{display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid rgba(255,255,255,0.04);padding-bottom:12px}
+  .mono-title{display:flex;gap:10px;align-items:center}
+  .mono-title h2{font-size:13px;margin:0;letter-spacing:.06em}
+  .status-pill{font-family:var(--mono);font-size:11px;background:rgba(255,255,255,0.04);padding:6px 8px;border-radius:8px;border:1px solid rgba(255,255,255,0.06)}
+
+  .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:8px}
+  label.small{font-size:10px;font-weight:700;opacity:.55;display:block;margin-bottom:6px}
+  input,select,textarea{width:100%;background:rgba(0,0,0,0.4);border:1px solid rgba(255,255,255,0.04);padding:10px;border-radius:12px;color:var(--text);outline:none;font-size:13px;box-sizing: border-box;}
+  select{appearance:none;padding-right:28px}
+
+  .log-area{flex:1;background:rgba(0,0,0,0.28);border:1px solid rgba(255,255,255,0.04);border-radius:16px;padding:12px;overflow:auto;font-family:var(--mono);font-size:12px}
+  .log-item{display:flex;gap:10px;margin-bottom:8px}
+  .log-item .time{opacity:.35}
+  .log-item .msg{color:#9aa6b3;white-space:pre-wrap}
+  .log-item.exec .msg{color:#3dd5ff}
+
+  .monolith .buttons{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:8px}
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:10px;border-radius:12px;border:none;cursor:pointer;font-weight:700;font-size:12px}
+  .btn.save{background: #ffffff;color:#000}
+  .btn.danger{background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.06);color:var(--text)}
+  .btn.danger:hover{background:rgba(255,0,0,0.08)}
+
+  /* Right card + deck */
+  .card-wrap{display:flex;flex-direction:column;gap:12px}
+  .card{background:rgba(0,0,0,0.60);border:1px solid rgba(255,255,255,0.08);border-radius:32px;overflow:hidden;backdrop-filter:blur(10px);transition:all .5s;box-shadow:0 20px 60px -20px rgba(0,0,0,0.8)}
+  .card.collapsed{height:80px}
+  .card-header{display:flex;align-items:center;justify-content:space-between;padding:18px;cursor:pointer}
+  .brand h1{margin:0;font-weight:300;font-size:18px}
+  .brand b{font-weight:800}
+  .pill{font-family:var(--mono);font-size:10px;letter-spacing:.18em}
+  .controls{display:flex;align-items:center;gap:8px}
+
+  .icon-btn{padding:8px;border-radius:12px;border:none;background:rgba(255,255,255,0.04);display:inline-flex;align-items:center;justify-content:center;cursor:pointer;color:white;}
+  .icon-btn.active{background: var(--primary);color:#000}
+  .chev{transition:transform .45s}
+  .chev.rot{transform:rotate(180deg)}
+
+  .card-body{padding:24px 28px 28px;opacity:1;transition:opacity .4s}
+  .card-body.hidden{opacity:0;height:0;padding:0 28px}
+
+  .profile{display:flex;flex-direction:column;align-items:center;gap:10px}
+  .avatar-wrap{position:relative}
+  .avatar{width:96px;height:96px;border-radius:50%;border:2px dashed;display:flex;align-items:center;justify-content:center;font-size:32px;font-weight:900;background:rgba(0,0,0,0.4)}
+  .lvl{position:absolute;right:-8px;bottom:-8px;background:rgba(0,0,0,0.6);border:1px solid rgba(255,255,255,0.06);padding:4px 8px;border-radius:8px;font-family:var(--mono);font-size:11px}
+
+  .controls-block{padding:10px 0;display:flex;flex-direction:column;gap:10px}
+  .label-row{display:flex;justify-content:space-between;align-items:flex-end}
+  .input-line{display:flex;gap:10px;align-items:center;background:rgba(255,255,255,0.03);padding:12px;border-radius:16px;border:1px solid rgba(255,255,255,0.04)}
+  .input-line input[type="text"]{background:transparent;border:none;outline:none;color:#fff;font-weight:700;font-size:14px;width:100%}
+
+  .progress-segs{display:flex;gap:6px;height:8px}
+  .seg{flex:1;background:rgba(255,255,255,0.03);border-radius:999px;overflow:hidden}
+  .seg .fill{height:100%;width:0%;transition:width 1s ease}
+
+  .revealed{transition:max-height .7s,opacity .7s;overflow:hidden}
+  .revealed.hidden{max-height:0;opacity:0}
+  .revealed.show{max-height:500px;opacity:1}
+
+  .reveal-box{background:rgba(0,0,0,0.6);padding:12px;border-radius:14px;border:1px solid rgba(255,255,255,0.04);font-family:var(--mono);font-size:12px;line-height:1.4}
+  .action-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-top:10px}
+  .btn.small{padding:10px;font-size:11px;border-radius:12px}
+
+  .mobile-only{display:block}
+  @media(min-width:1024px){ .mobile-only{display:none} }
+
+  .credit{text-align:center;font-family:var(--mono);font-size:10px;opacity:.18;letter-spacing:.25em}
+
+  /* App Deck inside card-wrap */
+  .deck{background:linear-gradient(180deg, rgba(255,255,255,0.01), transparent);border-radius:14px;padding:12px;border:1px solid rgba(255,255,255,0.03)}
+  .deck-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(90px,1fr));gap:12px}
+  .app-card{background:rgba(255,255,255,0.02);border-radius:12px;padding:8px;display:flex;flex-direction:column;align-items:center;gap:8px;cursor:pointer;position:relative}
+  .app-icon{width:48px;height:48px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:20px;background:rgba(0,0,0,0.25)}
+  .app-name{font-size:12px;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;width:100%}
+  .app-delete{position:absolute;right:8px;top:8px;background:transparent;border:none;color:rgba(255,255,255,0.4);cursor:pointer;display:none}
+  .app-card.editing .app-delete{display:block}
+
+  /* FAB */
+  .fab{position:fixed;right:26px;bottom:26px;width:56px;height:56px;border-radius:50%;background:var(--primary);color:#000;border:none;font-size:22px;cursor:pointer;z-index:40}
+
+  /* MODAL */
+  .modal{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.6);z-index:60;visibility:hidden;opacity:0;transition:.18s}
+  .modal.active{visibility:visible;opacity:1}
+  .modal-card{background:rgba(20,24,35,0.98);padding:18px;border-radius:14px;width:92%;max-width:480px;border:1px solid rgba(255,255,255,0.04)}
+
+  /* VIEWER */
+  .viewer{position:fixed;inset:0;background:#000;z-index:80;transform:translateY(110%);transition:.28s;display:flex;flex-direction:column}
+  .viewer.active{transform:translateY(0)}
+  .viewer-bar{height:56px;background:#05060a;color:#fff;display:flex;align-items:center;justify-content:space-between;padding:0 12px;border-bottom:1px solid rgba(255,255,255,0.04)}
+  #appFrame{flex:1;border:0;background:#fff}
+  .viewer-close{background:transparent;border:1px solid rgba(255,255,255,0.06);padding:8px;border-radius:8px;color:#fff;cursor:pointer}
+
+  /* Toast */
+  .toast{position:fixed;left:50%;transform:translateX(-50%) translateY(10px);bottom:24px;background:var(--primary);color:#000;padding:10px 18px;border-radius:999px;font-weight:900;font-family:var(--mono);font-size:11px;opacity:0;pointer-events:none;transition:all .45s}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0);pointer-events:auto}
+</style>
+</head>
+<body>
+<div class="app">
+  <div id="bgGlow" class="glow"></div>
+
+  <div class="container">
+
+    <!-- LEFT: Monolith -->
+    <div class="monolith" id="monolithPanel" aria-hidden="false">
+      <div class="head">
+        <div class="mono-title">
+          <i data-lucide="server" style="width:18px;height:18px;"></i>
+          <h2>Painel Monólito KOBLLUX</h2>
+        </div>
+        <div class="status-pill" id="monoStatus">STATUS: IDLE</div>
+      </div>
+
+      <div class="grid-2">
+        <div>
+          <label class="small">OpenRouter Key</label>
+          <input id="skInput" type="password" placeholder="sk-...">
+        </div>
+        <div>
+          <label class="small">Modelo Ativo</label>
+          <select id="modelSelect">
+            <option value="deepseek/deepseek-chat">DeepSeek V3</option>
+            <option value="meta-llama/llama-3-70b">LLaMA 3 70B</option>
+            <option value="anthropic/claude-3-haiku">Claude 3 Haiku</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="log-area" id="logs">
+        <!-- logs go here -->
+      </div>
+
+      <div class="buttons">
+        <button class="btn save" id="saveBtn" title="Salvar Config"><i data-lucide="save" style="width:16px;"></i> Salvar Config</button>
+        <button class="btn danger" id="snapshotBtn" title="Snapshot do app aberto"><i data-lucide="camera" style="width:16px;"></i> Snapshot</button>
+        <button class="btn danger" id="exportBtn" title="Exportar apps"><i data-lucide="download" style="width:16px;"></i> Export</button>
+      </div>
+
+      <div class="buttons" style="margin-top:8px">
+        <button class="btn danger" id="importBtn"><i data-lucide="upload" style="width:16px;"></i> Import</button>
+        <button class="btn danger" id="clearLogsBtn"><i data-lucide="trash-2" style="width:16px;"></i> Limpar Logs</button>
+        <button class="btn danger" id="clearDBBtn"><i data-lucide="database" style="width:16px;"></i> Limpar Apps</button>
+      </div>
+    </div>
+
+    <!-- RIGHT: Card + Deck -->
+    <div class="card-wrap">
+      <div id="card" class="card collapsed" role="region" aria-label="Dual Infodose Card">
+        <div class="card-header" id="cardHeader" title="Clique para abrir/fechar">
+          <div>
+            <div class="brand"><h1>Dual.<b id="brandAccent">Infodose</b></h1>
+            <p class="pill" id="identityText">Interface Locked</p></div>
+          </div>
+
+          <div class="controls">
+            <button id="micBtn" class="icon-btn" aria-pressed="false" title="Ativar/Desativar voz"><i data-lucide="mic"></i></button>
+            <button id="chevBtn" class="icon-btn chev" title="Abrir/Fechar"><i data-lucide="chevron-down"></i></button>
+          </div>
+        </div>
+
+        <div id="cardBody" class="card-body hidden">
+          <div class="profile">
+            <div class="avatar-wrap">
+              <div id="avatar" class="avatar">??</div>
+              <div class="lvl">LVL_5.3</div>
+            </div>
+          </div>
+
+          <div class="controls-block">
+            <div class="label-row">
+              <span style="font-size:10px;font-weight:800;opacity:.45;letter-spacing:.06em">Neural Codename</span>
+              <span id="syncText" style="font-family:var(--mono);font-weight:800;font-size:11px">0% SYNC</span>
+            </div>
+
+            <div class="input-line">
+              <input id="userInput" type="text" placeholder="Quem é você?">
+            </div>
+
+            <div class="progress-segs" id="progressSegs">
+              <div class="seg"><div class="fill" data-step="0"></div></div>
+              <div class="seg"><div class="fill" data-step="20"></div></div>
+              <div class="seg"><div class="fill" data-step="40"></div></div>
+              <div class="seg"><div class="fill" data-step="60"></div></div>
+              <div class="seg"><div class="fill" data-step="80"></div></div>
+            </div>
+          </div>
+
+          <div id="revealedSection" class="revealed hidden">
+            <div class="reveal-box">
+              <div style="position:absolute;right:10px;top:6px;opacity:.18"><i data-lucide="database" style="width:14px;"></i></div>
+              <p style="color:#3dd5ff;margin:0 0 8px 0">[ QUANTUM TOKEN ]</p>
+              <div id="activationInfo">ID: _SONIC_5.3<br>STATUS: CONNECTION_STABLE<br>ENCRYPTION: AES_256_KOBLLUX<br><span style="color:#ff69b4">PROMPT: ATIVAR_MODO_IA</span></div>
+            </div>
+
+            <div class="action-grid">
+              <button class="btn small" id="copyBtn"><i data-lucide="copy" style="width:14px;"></i> Copiar Ativação</button>
+              <button class="btn small" id="pngBtn" title="Gerar PNG"><i data-lucide="image" style="width:14px;"></i> PNG</button>
+              <button class="btn small" id="shareBtn" title="Compartilhar"><i data-lucide="share" style="width:14px;"></i> Share</button>
+              <div></div>
+            </div>
+          </div>
+
+          <div class="mobile-only" style="padding-top:12px;border-top:1px solid rgba(255,255,255,0.04);margin-top:12px">
+            <button class="btn danger" id="monolithSettingsBtn"><i data-lucide="settings" style="width:14px;"></i> Monolith Settings</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Deck below card -->
+      <div class="deck" id="deckPanel">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+          <strong>App Deck</strong>
+          <small style="font-family:var(--mono);opacity:.6" id="deckCount">0 apps</small>
+        </div>
+        <div class="deck-grid" id="deckGrid"></div>
+      </div>
+
+      <div class="credit">KOBLLUX · Senior Dev Mode · 2025</div>
+    </div>
+
+  </div>
+
+  <div id="fusion_toast" class="toast"><i data-lucide="check" style="width:14px; vertical-align:middle;margin-right:6px"></i> Ação Concluída</div>
+
+  <!-- FAB + MODAL + VIEWER -->
+  <button class="fab" id="openAdd">+</button>
+
+  <div class="modal" id="addModal" role="dialog" aria-modal="true">
+    <div class="modal-card">
+      <h3 style="margin:0 0 10px 0;color:var(--primary)">Novo App</h3>
+      <div style="display:flex;gap:8px;margin-bottom:10px;">
+        <button class="btn save" data-mode="file" id="tabFile">Arquivo</button>
+        <button class="btn danger" data-mode="url" id="tabUrl">URL</button>
+      </div>
+
+      <div style="margin-bottom:8px">
+        <label>Nome</label>
+        <input id="appName" placeholder="Meu App">
+      </div>
+
+      <div id="fileRow">
+        <label>Arquivo .html</label>
+        <input id="appFile" type="file" accept=".html">
+      </div>
+
+      <div id="urlRow" style="display:none">
+        <label>URL</label>
+        <input id="appUrl" type="url" placeholder="https://example.com">
+      </div>
+
+      <div style="display:flex;gap:8px;margin-top:12px">
+        <button class="btn save" id="saveAppBtn">Cristalizar App</button>
+        <button class="btn danger" id="cancelAddBtn">Cancelar</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="viewer" id="viewer">
+    <div class="viewer-bar">
+      <div id="viewTitle">App</div>
+      <div>
+        <button class="viewer-close" id="viewerClose">Fechar</button>
+      </div>
+    </div>
+    <!-- 
+      SANDBOX EXPANDED: "allow scripts pra tudo"
+      Includes: scripts, same-origin, forms, modals, popups, downloads, presentation, pointer-lock.
+    -->
+    <iframe id="appFrame" sandbox="allow-scripts allow-same-origin allow-forms allow-modals allow-popups allow-presentation allow-downloads allow-pointer-lock"></iframe>
+  </div>
+
+</div>
+
+<script>
+/* ========== icons ========== */
+document.addEventListener('DOMContentLoaded', ()=>{
+  if(window.lucide) lucide.createIcons();
+});
+
+/* ========== DB (IndexedDB 'infodose_apps') ========== */
+const DB_NAME = 'infodose_apps';
+const STORE = 'apps';
+let db=null;
+
+function openDB(){
+  return new Promise((res,rej)=>{
+    const rq = indexedDB.open(DB_NAME,1);
+    rq.onupgradeneeded = e => {
+      const d = e.target.result;
+      if(!d.objectStoreNames.contains(STORE)) d.createObjectStore(STORE,{keyPath:'id',autoIncrement:true});
+    };
+    rq.onsuccess = e => { db = e.target.result; res(db); };
+    rq.onerror = e => rej(e);
+  });
+}
+
+function saveAppObj(obj){
+  return new Promise((res,rej)=>{
+    const tx = db.transaction(STORE,'readwrite');
+    tx.objectStore(STORE).add(obj);
+    tx.oncomplete = ()=> res();
+    tx.onerror = (ev)=> rej(ev);
+  });
+}
+
+function getAllApps(){
+  return new Promise(res=>{
+    const tx = db.transaction(STORE,'readonly');
+    const req = tx.objectStore(STORE).getAll();
+    req.onsuccess = ()=> res(req.result);
+  });
+}
+
+function deleteApp(id){
+  return new Promise(res=>{
+    const tx = db.transaction(STORE,'readwrite');
+    tx.objectStore(STORE).delete(id);
+    tx.oncomplete = ()=> res();
+  });
+}
+
+function clearApps(){
+  return new Promise(res=>{
+    const tx = db.transaction(STORE,'readwrite');
+    tx.objectStore(STORE).clear();
+    tx.oncomplete = ()=> res();
+  });
+}
+
+/* ========== DOM refs ========== */
+const logsEl = document.getElementById('logs');
+const skInput = document.getElementById('skInput');
+const modelSelect = document.getElementById('modelSelect');
+const saveBtn = document.getElementById('saveBtn');
+const clearLogsBtn = document.getElementById('clearLogsBtn');
+const snapshotBtn = document.getElementById('snapshotBtn');
+const exportBtn = document.getElementById('exportBtn');
+const importBtn = document.getElementById('importBtn');
+const clearDBBtn = document.getElementById('clearDBBtn');
+
+const card = document.getElementById('card');
+const cardHeader = document.getElementById('cardHeader');
+const chevBtn = document.getElementById('chevBtn');
+const cardBody = document.getElementById('cardBody');
+const micBtn = document.getElementById('micBtn');
+
+const userInputEl = document.getElementById('userInput');
+const avatarEl = document.getElementById('avatar');
+const syncText = document.getElementById('syncText');
+const progressFills = document.querySelectorAll('.fill');
+const identityText = document.getElementById('identityText');
+const revealedSection = document.getElementById('revealedSection');
+const activationInfo = document.getElementById('activationInfo');
+const copyBtn = document.getElementById('copyBtn');
+const pngBtn = document.getElementById('pngBtn');
+const shareBtn = document.getElementById('shareBtn');
+const monolithSettingsBtn = document.getElementById('monolithSettingsBtn');
+
+const deckGrid = document.getElementById('deckGrid');
+const deckCount = document.getElementById('deckCount');
+const openAdd = document.getElementById('openAdd');
+const addModal = document.getElementById('addModal');
+const tabFile = document.getElementById('tabFile');
+const tabUrl = document.getElementById('tabUrl');
+const fileRow = document.getElementById('fileRow');
+const urlRow = document.getElementById('urlRow');
+const appName = document.getElementById('appName');
+const appFile = document.getElementById('appFile');
+const appUrl = document.getElementById('appUrl');
+const saveAppBtn = document.getElementById('saveAppBtn');
+const cancelAddBtn = document.getElementById('cancelAddBtn');
+
+const viewer = document.getElementById('viewer');
+const appFrame = document.getElementById('appFrame');
+const viewTitle = document.getElementById('viewTitle');
+const viewerClose = document.getElementById('viewerClose');
+
+const toast = document.getElementById('fusion_toast');
+
+let logs = [{time:(new Date()).toLocaleTimeString(), msg:'SYSTEM_READY // V5.3'}];
+function addLog(msg){
+  logs.unshift({time:(new Date()).toLocaleTimeString(), msg});
+  if(logs.length>200) logs = logs.slice(0,200);
+  renderLogs();
+}
+function renderLogs(){
+  logsEl.innerHTML = '';
+  logs.forEach(it=>{
+    const div = document.createElement('div');
+    div.className = 'log-item' + (it.msg.includes('EXEC') ? ' exec' : '');
+    div.innerHTML = '<div class="time">['+it.time+']</div><div class="msg">'+escapeHtml(it.msg)+'</div>';
+    logsEl.appendChild(div);
+  });
+}
+function escapeHtml(s){ return String(s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+
+/* visual / voice helpers (kept from your monolith) */
+function getThemeColor(text){
+  if(!text) return '#4fd4ff';
+  let h=0; for(let i=0;i<text.length;i++) h = text.charCodeAt(i)+((h<<5)-h);
+  const hue = Math.abs(h%360);
+  return `hsl(${hue},70%,55%)`;
+}
+function applyAccent(text){
+  const accent = getThemeColor(text);
+  document.getElementById('brandAccent').style.color = accent;
+  avatarEl.style.borderColor = accent;
+  avatarEl.style.color = accent;
+  document.getElementById('bgGlow').style.background = `radial-gradient(circle at 50% 50%, ${accent}11 0%, transparent 70%)`;
+}
+function updateSyncFromInput(text){
+  const s = Math.min(Math.round((text.length/12)*100),100);
+  syncText.textContent = `${s}% SYNC`;
+  progressFills.forEach(el=>{
+    const step = parseInt(el.getAttribute('data-step'));
+    if(s>step) el.style.width='100%'; else el.style.width='0%';
+    el.style.background = getThemeColor(text);
+  });
+}
+let revealed=false;
+function computeRevealed(){
+  const s = parseInt(syncText.textContent) || 0;
+  if(s >= 30 && !revealed){
+    revealed = true;
+    addLog('IDENTITY_CONFIRMED: Access Granted');
+    revealedSection.classList.remove('hidden'); revealedSection.classList.add('show');
+    document.getElementById('monoStatus').textContent = 'STATUS: STABLE';
+    identityText.textContent = 'Identity Confirmed';
+  } else if(s < 30 && revealed){
+    revealed = false;
+    addLog('IDENTITY_LOST: Interface Locked');
+    revealedSection.classList.add('hidden'); revealedSection.classList.remove('show');
+    document.getElementById('monoStatus').textContent = 'STATUS: IDLE';
+    identityText.textContent = 'Interface Locked';
+  }
+}
+function updateAvatar(text){ const s=(text||'').trim(); avatarEl.textContent = s ? s.substring(0,2).toUpperCase() : '??'; }
+
+/* toast */
+let tt=null;
+function showToast(msg,ms=1800){
+  toast.innerHTML = '<i data-lucide="check" style="width:14px; vertical-align:middle;margin-right:6px"></i>' + msg;
+  lucide.createIcons();
+  toast.classList.add('show'); clearTimeout(tt); tt=setTimeout(()=>toast.classList.remove('show'), ms); 
+}
+
+/* card toggle & voice minimal */
+let isCardOpen=false;
+function toggleCard(){ isCardOpen=!isCardOpen; if(isCardOpen){ card.classList.remove('collapsed'); cardBody.classList.remove('hidden'); chevBtn.classList.add('rot'); } else { card.classList.add('collapsed'); cardBody.classList.add('hidden'); chevBtn.classList.remove('rot'); } }
+cardHeader.addEventListener('click', toggleCard);
+chevBtn.addEventListener('click', (e)=>{ e.stopPropagation(); toggleCard(); });
+
+let voiceEnabled=false;
+function toggleVoice(){ voiceEnabled=!voiceEnabled; micBtn.classList.toggle('active', voiceEnabled); addLog(voiceEnabled ? 'VOICE_ONLINE' : 'VOICE_OFFLINE'); if(voiceEnabled) showToast('Voz ativada'); }
+micBtn.addEventListener('click', (e)=>{ e.stopPropagation(); toggleVoice(); });
+
+/* update input -> visuals */
+userInputEl.addEventListener('input', (e)=>{ const v=e.target.value; localStorage.setItem('fusion_user', v); applyAccent(v); updateAvatar(v); updateSyncFromInput(v); computeRevealed(); activationInfo.innerHTML = 'ID: ' + ((v||'').toUpperCase().replace(/\s/g,'_') || '_SONIC_5.3') + '<br>STATUS: CONNECTION_STABLE<br>ENCRYPTION: AES_256_KOBLLUX<br><span style="color:#ff69b4">PROMPT: ATIVAR_MODO_IA</span>'; });
+
+copyBtn.addEventListener('click', ()=>{ const id = (userInputEl.value||'').toUpperCase().replace(/\s/g,'_') + '_SONIC_5.3'; navigator.clipboard?.writeText(id).then(()=>{ showToast('ID copiado'); addLog('ACTIVATION_COPIED'); }, ()=>{ showToast('Falha'); }); });
+pngBtn.addEventListener('click', ()=>{ addLog('PNG_REQUESTED'); showToast('PNG gerado (simulado)'); });
+shareBtn.addEventListener('click', ()=>{ addLog('SHARE_REQUESTED'); showToast('Compartilhar (simulado)'); });
+monolithSettingsBtn.addEventListener('click', ()=>{ addLog("MOBILE_CONFIG_REQUESTED"); showToast('Monolith settings'); });
+
+/* ========== App Deck UI + runtime ========== */
+
+let currentOpenedApp = null; // {id, type, content, title}
+async function loadGrid(){
+  const list = await getAllApps();
+  deckGrid.innerHTML = '';
+  deckCount.textContent = `${list.length} apps`;
+  if(list.length===0){ deckGrid.innerHTML = '<div style="grid-column:1/-1;opacity:.5;text-align:center;padding:22px">Deck vazio</div>'; return; }
+  list.forEach(app=>{
+    const c = document.createElement('div'); c.className='app-card';
+    c.innerHTML = `<div class="app-icon">${escapeHtml(app.icon||'⚡')}</div><div class="app-name">${escapeHtml(app.title)}</div><button class="app-delete" title="Deletar">✕</button>`;
+    c.querySelector('.app-delete').onclick = async (ev)=>{ ev.stopPropagation(); if(!confirm('Deletar app?')) return; await deleteApp(app.id); addLog('APP_DELETED: '+app.title); await loadGrid(); showToast('App removido'); };
+    c.onclick = ()=> launchApp(app.id);
+    deckGrid.appendChild(c);
+  });
+}
+
+/* open app: if type=file => create blob + set srcdoc or src -> inject consoleBridge; if url, set src (no bridge) */
+function createConsoleBridge(){
+  return `<script>
+    (function(){
+      const oldLog = console.log;
+      console.log = function(){ oldLog.apply(console, arguments); try{ window.parent.postMessage({type:'console-log', msgs: Array.from(arguments).map(String)}, '*'); }catch(e){} };
+      window.onerror = function(msg,src,ln){ try{ window.parent.postMessage({type:'console-error', msgs:[String(msg)+ ' @'+src+':'+ln]}, '*'); }catch(e){} };
+    })();
+  <\/script>`;
+}
+
+async function launchApp(id){
+  const tx = db.transaction(STORE,'readonly');
+  const req = tx.objectStore(STORE).get(id);
+  req.onsuccess = async ()=>{
+    const app = req.result;
+    if(!app) return;
+    currentOpenedApp = app;
+    viewTitle.textContent = app.title;
+    // open viewer
+    viewer.classList.add('active');
+    // if file (stored HTML) -> use srcdoc and inject console bridge
+    if(app.type === 'file'){
+      const bridge = createConsoleBridge();
+      appFrame.srcdoc = bridge + app.content;
+      // keep attribute sandbox; allow attribute can be expanded if you want (microphone etc.)
+      addLog('EXEC_SRCDOC: ' + app.title);
+    } else {
+      // url: set src (cannot inject bridge due to cross-origin)
+      try{
+        appFrame.removeAttribute('srcdoc');
+        appFrame.src = app.content;
+        addLog('EXEC_URL: ' + app.title);
+      }catch(e){
+        addLog('EXEC_URL_ERR: ' + e.message);
+      }
+    }
+  };
+}
+
+/* Snapshot: salva conteúdo atualmente carregado (somente se for srcdoc or blob) */
+snapshotBtn.addEventListener('click', async ()=>{
+  if(!currentOpenedApp){
+    showToast('Nenhum app aberto');
+    return;
+  }
+  // only allow snapshot if content available (file type)
+  if(currentOpenedApp.type === 'file'){
+    const title = prompt('Nome do snapshot', currentOpenedApp.title) || currentOpenedApp.title;
+    const obj = { title, icon: '⚡', type: 'file', content: currentOpenedApp.content, ts: Date.now() };
+    await saveAppObj(obj);
+    await loadGrid();
+    addLog('SNAPSHOT_SAVED: '+title);
+    showToast('Snapshot salvo');
+    return;
+  }
+  // for URL type, try to fetch HTML (CORS permitting) and save; otherwise warn
+  try{
+    const r = await fetch(currentOpenedApp.content, {mode:'cors'});
+    if(!r.ok) throw new Error('Fetch failed');
+    const txt = await r.text();
+    const title = prompt('Nome do snapshot (da URL)', currentOpenedApp.title) || currentOpenedApp.title;
+    const obj = { title, icon: '🌐', type: 'file', content: txt, ts: Date.now() };
+    await saveAppObj(obj);
+    await loadGrid();
+    addLog('SNAPSHOT_FETCHED_AND_SAVED: '+title);
+    showToast('Snapshot salvo (fetched)');
+  }catch(e){
+    addLog('SNAPSHOT_FAIL: ' + e.message);
+    showToast('Snapshot falhou (CORS?)');
+  }
+});
+
+/* modal + add app */
+openAdd.addEventListener('click', ()=> addModal.classList.add('active'));
+cancelAddBtn.addEventListener('click', ()=> addModal.classList.remove('active'));
+tabFile.addEventListener('click', ()=>{ fileRow.style.display='block'; urlRow.style.display='none'; tabFile.classList.add('save'); tabUrl.classList.remove('save'); });
+tabUrl.addEventListener('click', ()=>{ fileRow.style.display='none'; urlRow.style.display='block'; tabUrl.classList.add('save'); tabFile.classList.remove('save'); });
+
+saveAppBtn.addEventListener('click', async ()=>{
+  const name = (appName.value||'App Sem Nome').trim();
+  if(fileRow.style.display !== 'none'){
+    const f = appFile.files[0];
+    if(!f){ alert('Selecione arquivo .html'); return; }
+    const txt = await f.text();
+    const obj = { title: name, icon: '⚡', type:'file', content: txt, ts: Date.now() };
+    await saveAppObj(obj);
+    addLog('APP_SAVED: ' + name);
+    showToast('App salvo');
+    addModal.classList.remove('active'); appName.value=''; appFile.value='';
+    await loadGrid();
+    return;
+  } else {
+    const url = (appUrl.value||'').trim();
+    if(!url){ alert('Digite URL'); return; }
+    const obj = { title: name, icon: '🌐', type:'url', content: url, ts: Date.now() };
+    await saveAppObj(obj);
+    addLog('APP_SAVED_URL: ' + name);
+    showToast('App URL salvo');
+    addModal.classList.remove('active'); appName.value=''; appUrl.value='';
+    await loadGrid();
+    return;
+  }
+});
+
+/* viewer controls */
+viewerClose.addEventListener('click', ()=>{ viewer.classList.remove('active'); appFrame.src = 'about:blank'; appFrame.srcdoc = ''; currentOpenedApp = null; });
+
+/* console bridge listener */
+window.addEventListener('message', (ev)=>{
+  // note: origin checks: when using local file origin may be "null"; we allow 'null' and same-origin
+  if (ev.origin !== 'null' && ev.origin !== window.location.origin) {
+    // allow only console messages - but skip if different origin
+    // return;
+  }
+  const d = ev.data;
+  if(!d || typeof d !== 'object') return;
+  if(d.type === 'console-log') {
+    addLog('RUNTIME: ' + d.msgs.join(' '));
+  }
+  if(d.type === 'console-error') {
+    addLog('RUNTIME_ERR: ' + d.msgs.join(' '));
+  }
+});
+
+/* export/import */
+exportBtn.addEventListener('click', async ()=> {
+  const arr = await getAllApps();
+  const b = new Blob([JSON.stringify(arr, null, 2)], { type:'application/json' });
+  const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = 'infodose_apps.json'; a.click();
+  addLog('EXPORT_DONE');
+});
+importBtn.addEventListener('click', ()=> {
+  const inp = document.createElement('input'); inp.type='file'; inp.accept='application/json';
+  inp.onchange = async (e)=> {
+    const f = e.target.files[0]; if(!f) return;
+    const txt = await f.text();
+    try{
+      const arr = JSON.parse(txt);
+      const tx = db.transaction(STORE,'readwrite'); const store = tx.objectStore(STORE);
+      arr.forEach(it=> store.add(it));
+      tx.oncomplete = async ()=> { await loadGrid(); addLog('IMPORT_COMPLETE'); showToast('Import completo'); };
+    }catch(err){ alert('JSON inválido'); }
+  };
+  inp.click();
+});
+
+/* clear DB */
+clearDBBtn.addEventListener('click', async ()=> {
+  if(!confirm('Limpar todos os apps?')) return;
+  await clearApps();
+  await loadGrid();
+  addLog('DB_CLEARED');
+});
+
+/* clear logs */
+clearLogsBtn.addEventListener('click', ()=> { logs = [{time:(new Date()).toLocaleTimeString(), msg:'LOGS_CLEARED'}]; renderLogs(); });
+
+/* save config (monolith) */
+saveBtn.addEventListener('click', ()=> {
+  localStorage.setItem('INFODOSE_OPENROUTER_SK', skInput.value);
+  localStorage.setItem('INFODOSE_OPENROUTER_MODEL', modelSelect.value);
+  addLog('CONFIG_SAVED');
+  showToast('Config salva');
+});
+
+/* boot DB + UI */
+(async function boot(){
+  await openDB();
+  await loadGrid();
+  renderLogs();
+  // restore persisted user
+  const u = localStorage.getItem('fusion_user') || '';
+  userInputEl.value = u;
+  applyAccent(u); updateAvatar(u); updateSyncFromInput(u); computeRevealed();
+  addLog('DB_READY');
+})();
+
+/* small: keyboard E toggles deck editing (show delete buttons) */
+document.addEventListener('keydown', (e)=>{ if(e.key.toLowerCase()==='e'){ document.querySelectorAll('.app-card').forEach(c=> c.classList.toggle('editing')); } });
+</script>
+</body>
+</html>
+
+

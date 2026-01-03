@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <title>DUAL // NEXUS [OS]</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#030406">
+  
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Montserrat:wght@400;600;800&display=swap" rel="stylesheet">
+
+  <style>
+    /* --- SYSTEM CORE VARIABLES --- */
+    :root {
+      --bg-core: #020406;
+      --panel-bg: rgba(10, 12, 18, 0.65);
+      --glass-border: rgba(255, 255, 255, 0.08);
+      --neon-cyan: #00f2ff;
+      --neon-purple: #bd00ff;
+      --neon-red: #ff2a6d;
+      --neon-green: #05d5fa;
+      --text-main: #e2e8f0;
+      --text-muted: #64748b;
+      --font-ui: 'Montserrat', sans-serif;
+      --font-code: 'JetBrains Mono', monospace;
+      --ease: cubic-bezier(0.23, 1, 0.32, 1);
+    }
+
+    * { box-sizing: border-box; outline: none; -webkit-tap-highlight-color: transparent; }
+    
+    body {
+      margin: 0; padding: 0; height: 100vh; overflow: hidden;
+      background: var(--bg-core); color: var(--text-main); font-family: var(--font-ui);
+      background-image: 
+        radial-gradient(circle at 15% 50%, rgba(189, 0, 255, 0.05) 0%, transparent 40%), 
+        radial-gradient(circle at 85% 30%, rgba(0, 242, 255, 0.05) 0%, transparent 40%);
+    }
+
+    /* --- LAYOUT GRID --- */
+    .os-grid {
+      display: grid;
+      grid-template-columns: 320px 1fr;
+      height: 100%;
+      gap: 0;
+    }
+
+    /* --- LEFT: MONOLITH PANEL --- */
+    .monolith {
+      background: rgba(5, 7, 10, 0.95);
+      border-right: 1px solid var(--glass-border);
+      display: flex; flex-direction: column;
+      padding: 20px;
+      backdrop-filter: blur(20px);
+      z-index: 10;
+    }
+
+    .brand { font-family: var(--font-code); font-weight: 800; letter-spacing: -1px; font-size: 1.2rem; color: #fff; margin-bottom: 20px; display: flex; align-items: center; gap: 10px; }
+    .brand span { color: var(--neon-cyan); }
+
+    /* Controls Area */
+    .control-group { margin-bottom: 25px; }
+    .label-xs { font-size: 0.65rem; color: var(--text-muted); font-weight: 700; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 8px; display: block; }
+    
+    .btn-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .sys-btn {
+      background: rgba(255,255,255,0.03); border: 1px solid var(--glass-border);
+      color: var(--text-muted); padding: 10px; border-radius: 8px; cursor: pointer;
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      font-size: 0.75rem; font-weight: 600; transition: 0.3s var(--ease);
+    }
+    .sys-btn:hover { background: rgba(255,255,255,0.08); color: #fff; }
+    .sys-btn.active { background: rgba(0, 242, 255, 0.1); border-color: var(--neon-cyan); color: var(--neon-cyan); box-shadow: 0 0 15px rgba(0, 242, 255, 0.1); }
+    .sys-btn.danger.active { background: rgba(255, 42, 109, 0.1); border-color: var(--neon-red); color: var(--neon-red); box-shadow: 0 0 15px rgba(255, 42, 109, 0.15); }
+
+    /* Console / Log */
+    .console-wrap { flex: 1; display: flex; flex-direction: column; min-height: 0; margin-top: 10px; }
+    .console-box {
+      flex: 1; background: #000; border-radius: 8px; border: 1px solid var(--glass-border);
+      padding: 10px; font-family: var(--font-code); font-size: 0.7rem; color: #71717a;
+      overflow-y: auto; scrollbar-width: none;
+    }
+    .log-line { margin-bottom: 4px; border-bottom: 1px solid rgba(255,255,255,0.03); padding-bottom: 2px; }
+    .log-line.sys { color: var(--neon-cyan); }
+    .log-line.err { color: var(--neon-red); }
+
+    /* --- RIGHT: NEXUS STAGE --- */
+    .nexus-stage {
+      position: relative;
+      display: flex; flex-direction: column;
+      background: radial-gradient(circle at center, rgba(0,0,0,0) 0%, rgba(0,0,0,0.8) 100%);
+      overflow: hidden;
+    }
+
+    /* Top Bar */
+    .nav-bar {
+      height: 60px; border-bottom: 1px solid var(--glass-border);
+      display: flex; align-items: center; justify-content: space-between; padding: 0 25px;
+      background: rgba(0,0,0,0.2);
+    }
+    .search-bar {
+      background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border);
+      border-radius: 20px; padding: 8px 16px; width: 300px; color: #fff;
+      font-family: var(--font-code); font-size: 0.8rem; display: flex; align-items: center; gap: 8px;
+    }
+    .search-bar input { background: transparent; border: none; color: #fff; width: 100%; font-family: inherit; }
+
+    /* Content Area */
+    .workspace {
+      flex: 1; padding: 30px; overflow-y: auto;
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 20px; align-content: start;
+    }
+
+    /* Stack Card */
+    .stack-card {
+      background: var(--panel-bg); border: 1px solid var(--glass-border); border-radius: 16px;
+      padding: 20px; transition: 0.3s var(--ease); position: relative; overflow: hidden;
+      display: flex; flex-direction: column; gap: 15px; cursor: default;
+    }
+    .stack-card:hover { border-color: var(--neon-purple); transform: translateY(-4px); box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+    .stack-head { display: flex; justify-content: space-between; align-items: flex-start; }
+    .stack-title { font-weight: 700; font-size: 0.95rem; color: #fff; margin-bottom: 4px; }
+    .stack-meta { font-size: 0.65rem; color: var(--text-muted); font-family: var(--font-code); }
+    .stack-tag {
+      background: rgba(255,255,255,0.05); padding: 4px 8px; border-radius: 6px; 
+      font-size: 0.6rem; font-weight: 800; letter-spacing: 1px; color: var(--neon-cyan);
+    }
+
+    .stack-actions { display: flex; gap: 8px; margin-top: auto; }
+    .action-btn {
+      flex: 1; padding: 8px; border-radius: 6px; border: 1px solid var(--glass-border);
+      background: transparent; color: var(--text-muted); cursor: pointer; transition: 0.2s;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .action-btn:hover { background: rgba(255,255,255,0.05); color: #fff; }
+    .action-btn.run { background: var(--neon-cyan); color: #000; border-color: var(--neon-cyan); font-weight: 700; }
+    .action-btn.run:hover { box-shadow: 0 0 15px var(--neon-cyan); }
+
+    /* Editor / Creator */
+    .editor-modal {
+      position: absolute; inset: 20px; background: rgba(5,7,10,0.95);
+      border: 1px solid var(--glass-border); border-radius: 20px; z-index: 50;
+      display: flex; flex-direction: column; transform: translateY(110%); transition: 0.5s var(--ease);
+      padding: 0; overflow: hidden; backdrop-filter: blur(30px);
+    }
+    .editor-modal.active { transform: translateY(0); }
+    .editor-bar { padding: 15px 20px; border-bottom: 1px solid var(--glass-border); display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.3); }
+    .editor-area { flex: 1; background: #08090b; color: #a9b7c6; border: none; padding: 20px; font-family: var(--font-code); font-size: 0.9rem; line-height: 1.6; resize: none; }
+    
+    /* RUNTIME OVERLAY (IFRAME) */
+    .runtime-layer {
+      position: fixed; inset: 0; background: #000; z-index: 100;
+      display: flex; flex-direction: column; transform: translateY(100%); transition: 0.4s var(--ease);
+    }
+    .runtime-layer.active { transform: translateY(0); }
+    .rt-bar { height: 50px; background: #111; border-bottom: 1px solid #333; display: flex; align-items: center; justify-content: space-between; padding: 0 20px; }
+    #rtFrame { flex: 1; border: none; background: #fff; }
+
+    /* Floating Action Button */
+    .fab {
+      position: absolute; bottom: 30px; right: 30px;
+      width: 60px; height: 60px; border-radius: 50%;
+      background: var(--neon-purple); color: #fff;
+      display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 0 30px rgba(189, 0, 255, 0.4);
+      cursor: pointer; transition: 0.3s; z-index: 40; border: none;
+    }
+    .fab:hover { transform: scale(1.1) rotate(90deg); }
+
+    /* Responsive */
+    @media (max-width: 800px) {
+      .os-grid { grid-template-columns: 1fr; }
+      .monolith { display: none; position: fixed; inset: 0; z-index: 99; }
+      .monolith.mobile-open { display: flex; }
+      .nav-bar { padding: 0 15px; }
+      .search-bar { width: 150px; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="runtime-layer" id="runtimeLayer">
+    <div class="rt-bar">
+      <div style="display:flex; gap:10px; align-items:center;">
+        <div style="width:8px; height:8px; background:var(--neon-green); border-radius:50%; box-shadow:0 0 10px var(--neon-green);"></div>
+        <span style="font-family:var(--font-code); color:#fff; font-size:0.8rem;">RUNTIME // ACTIVE</span>
+      </div>
+      <button class="sys-btn danger active" onclick="Core.killRuntime()" style="height:30px; padding:0 15px;">TERMINATE</button>
+    </div>
+    <div id="rtContainer" style="flex:1; width:100%; height:100%;"></div>
+  </div>
+
+  <div class="os-grid">
+    
+    <aside class="monolith" id="monoPanel">
+      <div class="brand">
+        <i data-lucide="cpu" color="#00f2ff"></i>
+        DUAL // <span>NEXUS</span>
+      </div>
+
+      <div class="control-group">
+        <span class="label-xs">IDENTITY SYNC</span>
+        <input type="text" id="userId" placeholder="USER_ID" style="width:100%; background:rgba(255,255,255,0.05); border:1px solid var(--glass-border); color:#fff; padding:10px; border-radius:8px; font-family:var(--font-code); margin-bottom:8px;" oninput="UI.updateSync(this.value)">
+        <div style="height:4px; background:rgba(255,255,255,0.1); border-radius:2px; overflow:hidden;">
+          <div id="syncMeter" style="height:100%; width:0%; background:var(--neon-purple); transition:0.3s;"></div>
+        </div>
+      </div>
+
+      <div class="control-group">
+        <span class="label-xs">SYSTEM CONTROLS</span>
+        <div class="btn-grid">
+          <button class="sys-btn" id="btnVoice" onclick="Core.toggleVoice()">
+            <i data-lucide="mic" size="14"></i> VOICE
+          </button>
+          <button class="sys-btn danger" id="btnRaw" onclick="Core.toggleRaw()">
+            <i data-lucide="shield" size="14"></i> SAFE
+          </button>
+        </div>
+      </div>
+
+      <div class="control-group">
+        <span class="label-xs">EXTERNAL INPUT</span>
+        <button class="sys-btn" onclick="document.getElementById('fileUp').click()" style="width:100%">
+          <i data-lucide="upload-cloud" size="14"></i> LOAD FILE
+        </button>
+        <input type="file" id="fileUp" hidden onchange="Core.handleUpload(this)">
+      </div>
+
+      <div class="console-wrap">
+        <span class="label-xs">SYSTEM LOG</span>
+        <div class="console-box" id="sysLog">
+          <div class="log-line sys">> BOOT_SEQUENCE_INIT...</div>
+          <div class="log-line sys">> KERNEL V2.0 READY</div>
+        </div>
+        <button class="sys-btn" onclick="Core.clearLog()" style="margin-top:8px; font-size:0.6rem; padding:6px;">CLEAR LOGS</button>
+      </div>
+    </aside>
+
+    <main class="nexus-stage">
+      
+      <div class="nav-bar">
+        <div class="search-bar">
+          <i data-lucide="search" size="14" color="#64748b"></i>
+          <input type="text" placeholder="Search Vault..." oninput="UI.renderVault(this.value)">
+        </div>
+        <div style="display:flex; gap:10px;">
+           <button class="sys-btn mobile-only" onclick="document.getElementById('monoPanel').classList.toggle('mobile-open')">MENU</button>
+        </div>
+      </div>
+
+      <div class="workspace" id="vaultGrid">
+        </div>
+
+      <button class="fab" onclick="UI.openEditor()">
+        <i data-lucide="plus" size="24"></i>
+      </button>
+
+      <div class="editor-modal" id="editorModal">
+        <div class="editor-bar">
+          <input id="editTitle" type="text" placeholder="Untitled App" style="background:transparent; border:none; color:#fff; font-weight:700; font-size:1rem; outline:none;">
+          <div style="display:flex; gap:10px;">
+            <button class="sys-btn" onclick="UI.closeEditor()">CANCEL</button>
+            <button class="sys-btn active" onclick="Core.saveStack()">SAVE TO VAULT</button>
+          </div>
+        </div>
+        <textarea class="editor-area" id="editContent" placeholder="" spellcheck="false"></textarea>
+      </div>
+
+    </main>
+  </div>
+
+<script>
+/* =========================================
+   DUAL // NEXUS KERNEL
+   Integration: Runtime + Stacks + Monolith
+========================================= */
+
+const DB_KEY = 'NEXUS_STACKS_V1';
+let stacks = JSON.parse(localStorage.getItem(DB_KEY) || '[]');
+let rawMode = false;
+let voiceEnabled = false;
+
+/* --- CORE FUNCTIONS --- */
+const Core = {
+  log(msg, type='sys') {
+    const box = document.getElementById('sysLog');
+    const div = document.createElement('div');
+    div.className = `log-line ${type}`;
+    div.innerText = `> ${msg}`;
+    box.appendChild(div);
+    box.scrollTop = box.scrollHeight;
+  },
+
+  clearLog() { document.getElementById('sysLog').innerHTML = ''; },
+
+  toggleRaw() {
+    rawMode = !rawMode;
+    const btn = document.getElementById('btnRaw');
+    const icon = btn.querySelector('svg'); // lucide replaces i
+    
+    if(rawMode) {
+      if(!confirm("WARNING: RAW MODE allows camera/mic access in sandbox. Proceed?")) {
+        rawMode = false; return;
+      }
+      btn.classList.add('active');
+      btn.innerHTML = 'RAW ON'; // simple text replace
+      this.log('SECURITY_OVERRIDE: SANDBOX WEAKENED', 'err');
+      this.speak("Raw mode active.");
+    } else {
+      btn.classList.remove('active');
+      btn.innerHTML = 'SAFE';
+      this.log('SECURITY_RESTORED: SANDBOX ACTIVE', 'sys');
+      this.speak("Safe mode restored.");
+    }
+    lucide.createIcons(); // refresh icons if we wiped them
+  },
+
+  toggleVoice() {
+    voiceEnabled = !voiceEnabled;
+    const btn = document.getElementById('btnVoice');
+    btn.classList.toggle('active', voiceEnabled);
+    this.speak(voiceEnabled ? "Voice system online." : "Voice offline.");
+  },
+
+  speak(text) {
+    if(!voiceEnabled) return;
+    window.speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text);
+    u.rate = 1.1; u.pitch = 0.9;
+    window.speechSynthesis.speak(u);
+  },
+
+  handleUpload(input) {
+    const file = input.files[0];
+    if(!file) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      UI.openEditor(file.name, e.target.result);
+      this.log(`BUFFER_LOAD: ${file.name}`);
+    };
+    reader.readAsText(file);
+    input.value = '';
+  },
+
+  saveStack() {
+    const title = document.getElementById('editTitle').value || 'Untitled Node';
+    const content = document.getElementById('editContent').value;
+    if(!content.trim()) return alert("Buffer Empty");
+
+    const id = Date.now();
+    stacks.unshift({ id, title, content, date: new Date().toLocaleDateString() });
+    localStorage.setItem(DB_KEY, JSON.stringify(stacks));
+    
+    UI.closeEditor();
+    UI.renderVault();
+    this.log(`STACK_SAVED: ${title}`);
+    this.speak("Stack saved.");
+  },
+
+  deleteStack(id) {
+    if(!confirm("Delete this node?")) return;
+    stacks = stacks.filter(s => s.id !== id);
+    localStorage.setItem(DB_KEY, JSON.stringify(stacks));
+    UI.renderVault();
+    this.log(`STACK_DELETED: ID_${id}`);
+  },
+
+  /* --- RUNTIME ENGINE --- */
+  runStack(id) {
+    const stack = stacks.find(s => s.id === id);
+    if(!stack) return;
+
+    const container = document.getElementById('rtContainer');
+    container.innerHTML = ''; // Clear prev
+    
+    const iframe = document.createElement('iframe');
+    iframe.style.cssText = "width:100%; height:100%; border:none; background:#fff;";
+    
+    // Console Bridge Script
+    const bridge = `
+      <script>
+        window.onerror = (m) => window.parent.postMessage({type:'err', msg:m}, '*');
+        console.log = (...a) => window.parent.postMessage({type:'log', msg:a.join(' ')}, '*');
+      <\/script>
+    `;
+
+    // Permissions
+    iframe.setAttribute('sandbox', 'allow-scripts allow-forms allow-modals allow-pointer-lock');
+    if(rawMode) iframe.setAttribute('allow', 'camera; microphone; fullscreen; clipboard-read; clipboard-write');
+
+    iframe.srcdoc = bridge + stack.content;
+    container.appendChild(iframe);
+
+    document.getElementById('runtimeLayer').classList.add('active');
+    this.log(`EXEC: ${stack.title}`);
+    this.speak("Executing runtime.");
+  },
+
+  killRuntime() {
+    document.getElementById('runtimeLayer').classList.remove('active');
+    setTimeout(() => document.getElementById('rtContainer').innerHTML = '', 400);
+    this.log("RUNTIME_TERMINATED");
+  }
+};
+
+/* --- UI CONTROLLERS --- */
+const UI = {
+  renderVault(filter = '') {
+    const grid = document.getElementById('vaultGrid');
+    grid.innerHTML = '';
+    
+    const filtered = stacks.filter(s => s.title.toLowerCase().includes(filter.toLowerCase()));
+    
+    if(filtered.length === 0) {
+      grid.innerHTML = `<div style="color:#333; font-family:var(--font-code); grid-column:1/-1; text-align:center; margin-top:50px;">NO DATA NODES FOUND</div>`;
+      return;
+    }
+
+    filtered.forEach(s => {
+      const card = document.createElement('div');
+      card.className = 'stack-card';
+      card.innerHTML = `
+        <div class="stack-head">
+          <div>
+            <div class="stack-title">${s.title}</div>
+            <div class="stack-meta">${s.date} • ID_${s.id}</div>
+          </div>
+          <div class="stack-tag">APP</div>
+        </div>
+        <div style="flex:1; opacity:0.5; font-size:0.7rem; font-family:var(--font-code); overflow:hidden; max-height:60px;">
+          ${s.content.substring(0, 150).replace(/</g, '&lt;')}...
+        </div>
+        <div class="stack-actions">
+          <button class="action-btn" onclick="Core.deleteStack(${s.id})"><i data-lucide="trash" size="14"></i></button>
+          <button class="action-btn" onclick="UI.openEditor('${s.title.replace(/'/g, "\\'")}', stacks.find(x=>x.id==${s.id}).content)"><i data-lucide="edit" size="14"></i></button>
+          <button class="action-btn run" onclick="Core.runStack(${s.id})">RUN <i data-lucide="play" size="14" style="margin-left:4px"></i></button>
+        </div>
+      `;
+      grid.appendChild(card);
+    });
+    lucide.createIcons();
+  },
+
+  openEditor(title = '', content = '') {
+    document.getElementById('editTitle').value = title;
+    document.getElementById('editContent').value = content;
+    document.getElementById('editorModal').classList.add('active');
+  },
+
+  closeEditor() {
+    document.getElementById('editorModal').classList.remove('active');
+  },
+
+  updateSync(val) {
+    const pct = Math.min(val.length * 10, 100);
+    document.getElementById('syncMeter').style.width = `${pct}%`;
+  }
+};
+
+/* --- INIT --- */
+window.addEventListener('message', (e) => {
+  if(e.data.type === 'log') Core.log(`APP: ${e.data.msg}`, 'sys');
+  if(e.data.type === 'err') Core.log(`ERR: ${e.data.msg}`, 'err');
+});
+
+window.onload = () => {
+  if(window.lucide) lucide.createIcons();
+  UI.renderVault();
+  Core.log("SYSTEM_READY");
+};
+
+</script>
+</body>
+</html>

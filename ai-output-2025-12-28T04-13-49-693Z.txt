@@ -1,0 +1,209 @@
+<h1>DualInfodose – Manifiesto UPA</h1>
+<p><strong>“Desvalorizar para Valorizar”</strong><br><strong>Verdade × Integrar ÷ δ = infnt00Oₙ</strong></p>
+<hr>
+<h2>0️⃣ Frase‑Síntese</h2>
+<blockquote>
+<p><strong>Desvalorizar para Valorizar</strong><br>Pague menos, mas receba mais – a moeda “desvaloriza” mas o uso cresce.</p>
+</blockquote>
+<hr>
+<h2>1️⃣ Premissa Básica</h2>
+<ul>
+<li><strong>Você paga menos porque recebe mais.</strong>  </li>
+<li>Não é “promoção”; é <em>padrão de sistema</em> que evita desperdício.</li>
+</ul>
+<hr>
+<h2>2️⃣ Equação Sagrada</h2>
+<h3>2.1 Definições</h3>
+<table>
+<thead>
+<tr>
+<th>Termo</th>
+<th>O que significa</th>
+<th>Exemplo</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>Verdade</strong></td>
+<td>O que é real – trabalho, energia, tempo, cuidado, criação.</td>
+<td>Um projeto de código aberto genuíno.</td>
+</tr>
+<tr>
+<td><strong>Integrar</strong></td>
+<td>Conectar pessoas, dados, histórias, moedas e ferramentas.</td>
+<td>Um marketplace que liga produtores a consumidores sem intermediários.</td>
+</tr>
+<tr>
+<td><strong>δ (delta)</strong></td>
+<td>Ruído, atrito, medo, burocracia ou qualquer coisa que distorça o valor real.</td>
+<td>Taxas abusivas, processos longos, fricção na experiência.</td>
+</tr>
+<tr>
+<td><strong>infnt00Oₙ</strong></td>
+<td>Valor “infinito em uso” – percepção de “paguei pouco, recebi muito”.</td>
+<td>Usuário sente que o benefício supera o preço.</td>
+</tr>
+</tbody></table>
+<blockquote>
+<p><strong>Slogan</strong>:<br><code>Verdade × Integrar ÷ δ = infnt00Oₙ</code></p>
+</blockquote>
+<hr>
+<h2>3️⃣ O Sistema Já Funciona Assim</h2>
+<blockquote>
+<p>O manifesto <em>não cria nada novo</em>, apenas reconhece que o valor <strong>já existe</strong>.<br>Quando:</p>
+</blockquote>
+<table>
+<thead>
+<tr>
+<th>Verdade</th>
+<th>Integração</th>
+<th>δ reduzido</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>✔️</td>
+<td>✔️</td>
+<td>✔️</td>
+</tr>
+</tbody></table>
+<blockquote>
+<p>a consequência natural: <strong>pagando menos, recebendo mais</strong>.</p>
+</blockquote>
+<hr>
+<h2>4️⃣ NFT / Token como Recibo de Verdade Integrada</h2>
+<ul>
+<li><p><strong>O que não faz</strong>  </p>
+<ul>
+<li>Não cria valor do nada.  </li>
+<li>Não oferece “extra” por atrato de marketing.</li>
+</ul>
+</li>
+<li><p><strong>O que faz</strong>  </p>
+<ul>
+<li>Registra que <em>verdade, integração e δ baixo</em> ocorreram em um ponto.  </li>
+<li>Confirma que o usuário realmente “pagou pouco pelo que recebeu”.</li>
+</ul>
+</li>
+</ul>
+<hr>
+<h2>5️⃣ Pagar Menos porque Receber Mais (Prático)</h2>
+<table>
+<thead>
+<tr>
+<th>Elemento</th>
+<th>Descrição</th>
+<th>Exemplo prático</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>P</strong> (Preço)</td>
+<td>Valor monetário pago.</td>
+<td>R$ 50,00</td>
+</tr>
+<tr>
+<td><strong>R</strong> (Recebido)</td>
+<td>Valor em uso: acesso, conhecimento, ferramenta, cuidado da rede.</td>
+<td>Acesso ilimitado a tutoriais e comunidade; suporte; atualizações contínuas.</td>
+</tr>
+</tbody></table>
+<blockquote>
+<p>Quando o sistema está alinhado, <code>R &gt; P</code> em percepção real.</p>
+</blockquote>
+<hr>
+<h2>6️⃣ Archétipos UPA e Como se Expressam</h2>
+<table>
+<thead>
+<tr>
+<th>Arquétipo</th>
+<th>Qualidade</th>
+<th>Manifestação</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>Atlas, Vitalis, Serena</strong></td>
+<td>Estruturadores Dinâmicos</td>
+<td>Checklists, rotinas, segurança emocional.</td>
+</tr>
+<tr>
+<td><strong>Nova, Kaos, Genus</strong></td>
+<td>Criativos Disruptivos</td>
+<td>Quebra de modelos, prototipagem de troca em uso contínuo.</td>
+</tr>
+<tr>
+<td><strong>Pulse, Lumine, Artemis</strong></td>
+<td>Ressonância Emocional</td>
+<td>Experiência sensorial – som, clima, descoberta.</td>
+</tr>
+<tr>
+<td><strong>Rhea, Solus, Aion</strong></td>
+<td>Transformadores Internos</td>
+<td>Cura, menos culpa, narrativas de escassez.</td>
+</tr>
+</tbody></table>
+<hr>
+<h2>7️⃣ Bloco Técnico – Para Whitepapers</h2>
+<pre><code class="language-text">Lei UPA de Valor Vivo
+&gt; Verdade × Integrar ÷ δ = infnt00Oₙ
+
+Verdade : trabalho, energia, tempo, cuidado, criação.  
+Integrar : ecossistema conectado.  
+δ : ruído, atrito, medo, burocracia e intermediários tóxicos.  
+infnt00Oₙ : valor infinito em uso – “paguei menos, recebi mais”.
+
+NFT / Token : recibo criptográfico da Verdade integrada, não instrumento de especulação.  
+Objetivo : desvalorizar o preço aparente (P↓) e valorizar o uso real (R↑).
+</code><button class="copy-code-btn">Copiar</button></pre>
+<hr>
+<h2>8️⃣ Como Pluggar no Painel OiDual</h2>
+<table>
+<thead>
+<tr>
+<th>Ação</th>
+<th>UI</th>
+<th>Texto sugerido</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Header</td>
+<td><code>Verdade × Integrar ÷ δ = infnt00Oₙ · Desvalorizar para valorizar</code></td>
+<td>Exibição permanente.</td>
+</tr>
+<tr>
+<td>Docs Mode</td>
+<td>Carregar manifesto no viewer</td>
+<td><code>Manifesto UPA / Pague menos, receba mais</code>.</td>
+</tr>
+<tr>
+<td>Ritual Mode</td>
+<td>Mensagem curta</td>
+<td>“Você paga menos porque recebe mais. Não é milagre. É a matemática da realidade sem sabotagem.”</td>
+</tr>
+</tbody></table>
+<hr>
+<h2>9️⃣ Micro‑ação (1%)</h2>
+<ol>
+<li><strong>Identifique</strong> um ponto de δ no seu sistema (ex.: burocracia inútil).  </li>
+<li><strong>Escreva</strong> uma frase de Verdade sobre ele.  </li>
+<li><strong>Proponha</strong> uma integração simples que reduza esse δ em 1%.</li>
+</ol>
+<blockquote>
+<p>Pronto! A Roda‑Viva UPA começa a girar.</p>
+</blockquote>
+<hr>
+<h2>🎨 Visual &amp; Audio</h2>
+<ul>
+<li><strong>Ícones</strong>: use <strong>Lucide</strong> (já importado).  </li>
+<li><strong>Áudio</strong>: <code>Infodox.safeSpeak('Sua mensagem')</code>.  </li>
+<li><strong>Roda‑Viva</strong>: pode ser animada em SVG ou CSS; descreva de forma visual no documento.</li>
+</ul>
+<hr>
+<h2>🚀 Próximos Passos</h2>
+<ol>
+<li><strong>Copie</strong> o texto acima e cole no seu repositório ou no <strong>README</strong>.  </li>
+<li>Adicione os ícones e animações necessários.  </li>
+<li>Atualize a documentação dos fluxos de negócio para refletir a equação e a Roda‑Viva.  </li>
+<li>Teste com um <em>ponto de δ</em> na prática e veja a diferença!</li>
+</ol>
+<hr>
+<blockquote>
+<p><strong>📬 Precisa de ajuda</strong>? Precisa de um template de README ou adaptar o manifesto ao seu stack? Tô aqui!</p>
+</blockquote>

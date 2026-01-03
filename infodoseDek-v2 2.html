@@ -1,0 +1,365 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>InfoDose · App Home (Upload → Cristalizar)</title>
+<meta name="theme-color" content="#050811" />
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  /* --- Compacto: combina visual monólito + deck --- */
+  :root{
+    --bg:#050811; --panel: rgba(20,24,35,0.95); --primary:#00f5ff; --accent:#ff4bff; --glass: rgba(255,255,255,0.04);
+    --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, "Roboto Mono", "Courier New", monospace;
+  }
+  html,body{height:100%;margin:0;background:var(--bg);color:#e6eef6;font-family:'Montserrat',sans-serif;}
+  .wrap{max-width:1200px;margin:18px auto;padding:18px;display:grid;grid-template-columns:360px 1fr;gap:18px;}
+  @media(max-width:1024px){ .wrap{grid-template-columns:1fr} }
+
+  /* MONOLITH (left) */
+  .monolith{background:rgba(255,255,255,0.03);border-radius:20px;padding:18px;border:1px solid rgba(255,255,255,0.06);height:640px;display:flex;flex-direction:column;gap:12px;}
+  .mono-head{display:flex;justify-content:space-between;align-items:center}
+  .mono-head h2{margin:0;font-size:14px;font-weight:700}
+  .pill{font-family:var(--mono);font-size:11px;background:rgba(0,0,0,0.35);padding:6px 8px;border-radius:10px}
+  .log-area{flex:1;background:rgba(0,0,0,0.28);border-radius:12px;padding:12px;overflow:auto;font-family:var(--mono);font-size:12px}
+  .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  input[type=password], select, input[type=text]{width:100%;padding:8px;border-radius:10px;border:1px solid rgba(255,255,255,0.05);background:transparent;color:inherit}
+  .btn{padding:10px;border-radius:10px;border:none;cursor:pointer;font-weight:700}
+  .btn.save{background:var(--primary);color:#000}
+  .btn.ghost{background:transparent;border:1px solid rgba(255,255,255,0.06);color:inherit}
+
+  /* DECK (right) */
+  .deck{display:flex;flex-direction:column;height:640px;border-radius:20px;padding:12px;background:linear-gradient(180deg, rgba(255,255,255,0.02), transparent);border:1px solid rgba(255,255,255,0.04)}
+  .topbar{display:flex;justify-content:space-between;align-items:center;padding:8px 12px}
+  .brand{font-weight:800;color:var(--primary)}
+  .clock{font-family:var(--mono);color:#9ca3af;font-size:12px}
+  .grid{flex:1;padding:12px;display:grid;grid-template-columns:repeat(auto-fill,minmax(90px,1fr));gap:14px;overflow:auto}
+  .app-card{background:rgba(255,255,255,0.03);border-radius:14px;padding:12px;display:flex;flex-direction:column;align-items:center;gap:8px;cursor:pointer;position:relative}
+  .app-icon{width:64px;height:64px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:22px;background:rgba(255,255,255,0.02)}
+  .app-name{font-size:12px;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;width:100%}
+  .delete-btn{position:absolute;right:8px;top:8px;background:transparent;border:1px solid rgba(255,255,255,0.06);border-radius:8px;padding:4px;display:none}
+  .editing .delete-btn{display:block}
+  .fab{position:fixed;right:26px;bottom:26px;width:56px;height:56px;border-radius:50%;background:var(--primary);color:#000;border:none;font-size:22px;cursor:pointer}
+
+  /* MODAL */
+  .modal{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.6);z-index:60;visibility:hidden;opacity:0;transition:.18s}
+  .modal.active{visibility:visible;opacity:1}
+  .card{background:var(--panel);padding:18px;border-radius:14px;width:92%;max-width:420px;border:1px solid rgba(255,255,255,0.06)}
+  .tabs{display:flex;gap:6px;margin-bottom:12px}
+  .tab{flex:1;padding:8px;border-radius:10px;border:none;background:rgba(255,255,255,0.02);cursor:pointer}
+  .tab.active{background:linear-gradient(90deg,var(--accent),var(--primary));color:#000}
+  .glass-input{width:100%;padding:10px;border-radius:10px;border:1px solid rgba(255,255,255,0.06);background:transparent;color:inherit}
+  .emoji-picker{display:flex;gap:6px;padding:6px;overflow-x:auto;margin-top:6px}
+  .emoji{padding:6px;border-radius:8px;border:1px solid transparent;cursor:pointer}
+  .emoji.selected{background:rgba(255,255,255,0.06);border-color:rgba(255,255,255,0.08)}
+
+  /* VIEWER */
+  .viewer{position:fixed;inset:0;background:#000;z-index:80;transform:translateY(110%);transition:.28s;display:flex;flex-direction:column}
+  .viewer.active{transform:translateY(0)}
+  .viewer-bar{height:56px;background:#05060a;color:#fff;display:flex;align-items:center;justify-content:space-between;padding:0 12px;border-bottom:1px solid rgba(255,255,255,0.04)}
+  #appFrame{flex:1;border:0;background:#fff}
+  .viewer-close{background:transparent;border:1px solid rgba(255,255,255,0.06);padding:8px;border-radius:8px;color:#fff;cursor:pointer}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <!-- MONOLITH -->
+  <aside class="monolith" aria-label="InfoDose Monolith">
+    <div class="mono-head">
+      <h2>InfoDose · Monólito</h2>
+      <div class="pill" id="monoStatus">STATUS: IDLE</div>
+    </div>
+
+    <div class="grid-2">
+      <div>
+        <label class="small">OpenRouter Key</label>
+        <input id="skInput" type="password" placeholder="sk-...">
+      </div>
+      <div>
+        <label class="small">Modelo</label>
+        <select id="modelSelect">
+          <option>deepseek/deepseek-chat</option>
+          <option>meta-llama/llama-3-70b</option>
+        </select>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:8px;">
+      <button class="btn save" id="saveCfg">Salvar</button>
+      <button class="btn ghost" id="clearLog">Limpar</button>
+    </div>
+
+    <div class="log-area" id="logs"></div>
+
+    <div style="display:flex;gap:8px;margin-top:8px">
+      <button class="btn ghost" id="exportAll">Exportar (JSON)</button>
+      <button class="btn ghost" id="importJson">Importar</button>
+    </div>
+  </aside>
+
+  <!-- DECK -->
+  <section class="deck" aria-label="InfoDose Deck">
+    <div class="topbar">
+      <div class="brand">InfoDose · AppDeck</div>
+      <div class="clock" id="clock"></div>
+    </div>
+
+    <div class="grid" id="appGrid"></div>
+    <div style="height:6px"></div>
+  </section>
+</div>
+
+<!-- FAB -->
+<button class="fab" id="openAdd">+</button>
+
+<!-- MODAL: Add App -->
+<div class="modal" id="addModal" role="dialog" aria-modal="true">
+  <div class="card">
+    <h3 style="margin:0 0 10px 0">Novo App</h3>
+    <div class="tabs">
+      <button class="tab active" data-mode="file">Arquivo</button>
+      <button class="tab" data-mode="url">URL</button>
+    </div>
+
+    <div style="margin-bottom:8px">
+      <label>Nome</label>
+      <input id="appName" class="glass-input" placeholder="Meu App">
+    </div>
+
+    <div id="fileRow">
+      <label>Arquivo .html</label>
+      <input id="appFile" type="file" accept=".html" class="glass-input">
+    </div>
+
+    <div id="urlRow" style="display:none">
+      <label>URL</label>
+      <input id="appUrl" type="url" class="glass-input" placeholder="https://...">
+    </div>
+
+    <div style="margin-top:8px">
+      <label>Ícone</label>
+      <div class="emoji-picker" id="emojiPicker"></div>
+      <input type="hidden" id="selectedIcon" value="⚡">
+    </div>
+
+    <div style="display:flex;gap:8px;margin-top:12px">
+      <button class="btn save" id="saveApp">Cristalizar App</button>
+      <button class="btn ghost" id="cancelAdd">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<!-- VIEWER -->
+<div class="viewer" id="viewer">
+  <div class="viewer-bar">
+    <div id="viewTitle">App</div>
+    <div>
+      <button class="viewer-close" id="viewerClose">Fechar</button>
+    </div>
+  </div>
+  <iframe id="appFrame" sandbox="allow-scripts allow-forms allow-modals"></iframe>
+</div>
+
+<script>
+/* ======= Engine: IndexedDB store 'infodose_apps' (file or url) ======= */
+
+const DB_NAME = 'infodose_apps';
+const STORE = 'apps';
+let db = null;
+
+function openDB(){
+  return new Promise((res,rej)=>{
+    const rq = indexedDB.open(DB_NAME,1);
+    rq.onupgradeneeded = e => {
+      const d = e.target.result;
+      if(!d.objectStoreNames.contains(STORE)) d.createObjectStore(STORE,{keyPath:'id',autoIncrement:true});
+    };
+    rq.onsuccess = e => { db = e.target.result; res(db); };
+    rq.onerror = e => rej(e);
+  });
+}
+
+async function saveAppObj(obj){
+  const tx = db.transaction(STORE,'readwrite');
+  tx.objectStore(STORE).add(obj);
+  return new Promise(r=> tx.oncomplete = ()=> r());
+}
+
+async function getAllApps(){
+  return new Promise(res=>{
+    const tx = db.transaction(STORE,'readonly');
+    const req = tx.objectStore(STORE).getAll();
+    req.onsuccess = ()=> res(req.result);
+  });
+}
+
+async function deleteApp(id){
+  if(!confirm('Desintegrar este App?')) return;
+  const tx = db.transaction(STORE,'readwrite');
+  tx.objectStore(STORE).delete(id);
+  tx.oncomplete = ()=> loadGrid();
+}
+
+/* ===== UI glue ===== */
+
+const appGrid = document.getElementById('appGrid');
+const openAdd = document.getElementById('openAdd');
+const addModal = document.getElementById('addModal');
+const tabs = addModal.querySelectorAll('.tab');
+const fileRow = document.getElementById('fileRow');
+const urlRow = document.getElementById('urlRow');
+const emojiPicker = document.getElementById('emojiPicker');
+const selectedIcon = document.getElementById('selectedIcon');
+const appFrame = document.getElementById('appFrame');
+const viewer = document.getElementById('viewer');
+const viewTitle = document.getElementById('viewTitle');
+const clockEl = document.getElementById('clock');
+const logsEl = document.getElementById('logs');
+const saveCfg = document.getElementById('saveCfg');
+const clearLog = document.getElementById('clearLog');
+const exportAll = document.getElementById('exportAll');
+const importJson = document.getElementById('importJson');
+
+function log(msg){
+  const time = new Date().toLocaleTimeString();
+  logsEl.innerHTML = `<div style="font-family:var(--mono);font-size:12px;padding:6px 0"><strong>[${time}]</strong> ${msg}</div>` + logsEl.innerHTML;
+}
+
+/* clock */
+function startClock(){ setInterval(()=> clockEl.textContent = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}), 1000); }
+
+/* emojis */
+const emojis = ['⚡','🧠','💾','🎮','📊','📝','💎','🔥','🪐','🤖','📱','🎵'];
+function setupEmoji(){
+  emojis.forEach((em,i)=>{
+    const d = document.createElement('div'); d.className='emoji'+(i===0?' selected':''); d.textContent=em;
+    d.onclick = ()=> { document.querySelectorAll('.emoji').forEach(x=>x.classList.remove('selected')); d.classList.add('selected'); selectedIcon.value = em; };
+    emojiPicker.appendChild(d);
+  });
+}
+
+/* modal/tab logic */
+openAdd.onclick = ()=> addModal.classList.add('active');
+document.getElementById('cancelAdd').onclick = ()=> addModal.classList.remove('active');
+tabs.forEach(t=> t.addEventListener('click', ev=>{
+  tabs.forEach(x=>x.classList.remove('active'));
+  ev.currentTarget.classList.add('active');
+  const mode = ev.currentTarget.dataset.mode;
+  fileRow.style.display = mode==='file' ? 'block':'none';
+  urlRow.style.display = mode==='url' ? 'block':'none';
+}));
+
+/* save app */
+document.getElementById('saveApp').addEventListener('click', async ()=>{
+  const name = document.getElementById('appName').value.trim() || 'App Sem Nome';
+  const mode = addModal.querySelector('.tab.active').dataset.mode;
+  let content = '';
+  if(mode==='file'){
+    const f = document.getElementById('appFile').files[0];
+    if(!f){ alert('Selecione um arquivo .html'); return; }
+    content = await f.text();
+  } else {
+    const url = document.getElementById('appUrl').value.trim();
+    if(!url){ alert('Digite uma URL'); return; }
+    content = url;
+  }
+  const item = { title: name, icon: selectedIcon.value || '⚡', type: mode, content, ts: Date.now() };
+  await saveAppObj(item);
+  addModal.classList.remove('active');
+  resetForm();
+  loadGrid();
+  log('NODE_SAVED: ' + name);
+});
+
+/* reset form */
+function resetForm(){ document.getElementById('appName').value=''; document.getElementById('appUrl').value=''; document.getElementById('appFile').value=''; document.querySelectorAll('.emoji').forEach(x=>x.classList.remove('selected')); emojiPicker.children[0]?.classList.add('selected'); selectedIcon.value='⚡'; }
+
+/* render grid */
+async function loadGrid(){
+  const list = await getAllApps();
+  appGrid.innerHTML = '';
+  if(!list || list.length===0){ appGrid.innerHTML = '<div style="grid-column:1/-1;text-align:center;opacity:.5;margin-top:40px">Deck Vazio — Adicione um App</div>'; return; }
+  list.forEach(app=>{
+    const card = document.createElement('div'); card.className='app-card';
+    card.innerHTML = `
+      <div class="app-icon">${app.icon}</div>
+      <div class="app-name">${escapeHtml(app.title)}</div>
+      <button class="delete-btn" title="Deletar">✕</button>
+    `;
+    card.onclick = () => {
+      if(document.body.classList.contains('editing')){ document.body.classList.remove('editing'); return; }
+      launchApp(app.id);
+    };
+    card.querySelector('.delete-btn').onclick = (ev)=> { ev.stopPropagation(); deleteApp(app.id); };
+    // long-press to toggle editing
+    let t=null;
+    card.onmousedown = card.ontouchstart = ()=> t = setTimeout(()=> document.body.classList.add('editing'), 700);
+    card.onmouseup = card.ontouchend = card.onmouseleave = ()=> clearTimeout(t);
+    appGrid.appendChild(card);
+  });
+}
+
+/* launch app */
+async function launchApp(id){
+  const tx = db.transaction(STORE,'readonly');
+  const req = tx.objectStore(STORE).get(id);
+  req.onsuccess = ()=>{
+    const app = req.result;
+    if(!app) return;
+    let url;
+    if(app.type==='file'){
+      const blob = new Blob([app.content], { type: 'text/html' });
+      url = URL.createObjectURL(blob);
+    } else {
+      url = app.content;
+    }
+    viewTitle.textContent = app.title;
+    appFrame.src = url;
+    viewer.classList.add('active');
+    log('LAUNCH: '+app.title);
+  };
+}
+document.getElementById('viewerClose').onclick = ()=> { viewer.classList.remove('active'); setTimeout(()=> appFrame.src='about:blank',300); };
+
+/* escape */
+function escapeHtml(s){ return String(s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+
+/* export / import simple JSON */
+exportAll.onclick = async ()=>{
+  const apps = await getAllApps();
+  const blob = new Blob([JSON.stringify(apps, null, 2)], { type:'application/json' });
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'infodose_apps.json'; a.click();
+};
+
+importJson.onclick = ()=> {
+  const inp = document.createElement('input'); inp.type='file'; inp.accept='application/json';
+  inp.onchange = async (e)=> {
+    const f = e.target.files[0]; if(!f) return;
+    const txt = await f.text(); try { const arr = JSON.parse(txt); const tx = db.transaction(STORE,'readwrite'); const store = tx.objectStore(STORE); arr.forEach(it=> store.add(it)); tx.oncomplete = ()=> { loadGrid(); log('IMPORT_COMPLETE'); }; } catch(e){ alert('JSON inválido'); }
+  };
+  inp.click();
+};
+
+/* boot */
+window.addEventListener('load', async ()=>{
+  setupEmoji();
+  startClock();
+  await openDB();
+  await loadGrid();
+  log('DB_READY');
+});
+
+/* monolith controls */
+saveCfg.onclick = ()=> { localStorage.setItem('INF_SK', document.getElementById('skInput').value); localStorage.setItem('INF_MODEL', document.getElementById('modelSelect').value); log('CFG_SAVED'); document.getElementById('monoStatus').textContent='STATUS: CONFIG SALVA'; };
+clearLog.onclick = ()=> { logsEl.innerHTML=''; log('LOGS_CLEARED'); };
+
+/* small UX: escape modal on outside click */
+addModal.addEventListener('click', (e)=> { if(e.target===addModal) addModal.classList.remove('active'); });
+
+/* helper: add long-press editing toggle by keyboard for desktop */
+document.addEventListener('keydown',(e)=>{ if(e.key==='e') document.body.classList.toggle('editing'); });
+
+</script>
+</body>
+</html>
