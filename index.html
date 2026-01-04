@@ -1,706 +1,564 @@
-
-
-
-  
-  <!doctype html>
+<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-<meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>Dual.Infodose — Monólito (Infodose AppDeck integrado)</title>
-<link rel="manifest" href="./manifest.json">
-<meta name="theme-color" content="#030406">
-<link rel="apple-touch-icon" href="./icon-192.png">
-
-<script>
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('./sw.js')
-      .then(() => console.log('Service Worker Registered'));
-  }
-</script>
-<!-- Lucide icons CDN -->
-<script src="https://unpkg.com/lucide@latest"></script>
-
-<style>
-  :root{
-    --bg:#020406;
-    --text:#e6eef6;
-    --panel: rgba(255,255,255,0.05);
-    --panel-border: rgba(255,255,255,0.10);
-    --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, "Roboto Mono", "Courier New", monospace;
-    --primary: #06d6ff;
-  }
-  html,body{height:100%;margin:0;background:var(--bg);color:var(--text);font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,"Helvetica Neue",Arial;}
-  .app{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;box-sizing:border-box;overflow:hidden;position:relative;user-select:text;}
-  .glow{position:fixed;inset:0;pointer-events:none;opacity:.28;z-index:0;border-radius:0}
-  .container{width:100%;max-width:1200px;display:grid;grid-template-columns:1fr;gap:18px;z-index:10}
-  @media(min-width:1024px){ .container{grid-template-columns:1fr 420px;} }
-
-  /* Left monolith */
-  .monolith{display:none;flex-direction:column;gap:16px;background:rgba(255,255,255,0.04);border:1px solid var(--panel-border);border-radius:24px;padding:20px;height:700px;backdrop-filter:blur(8px)}
-  @media(min-width:1024px){ .monolith{display:flex} }
-
-  .monolith .head{display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid rgba(255,255,255,0.04);padding-bottom:12px}
-  .mono-title{display:flex;gap:10px;align-items:center}
-  .mono-title h2{font-size:13px;margin:0;letter-spacing:.06em}
-  .status-pill{font-family:var(--mono);font-size:11px;background:rgba(255,255,255,0.04);padding:6px 8px;border-radius:8px;border:1px solid rgba(255,255,255,0.06)}
-
-  .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:8px}
-  label.small{font-size:10px;font-weight:700;opacity:.55;display:block;margin-bottom:6px}
-  input,select,textarea{width:100%;background:rgba(0,0,0,0.4);border:1px solid rgba(255,255,255,0.04);padding:10px;border-radius:12px;color:var(--text);outline:none;font-size:13px;box-sizing: border-box;}
-  select{appearance:none;padding-right:28px}
-
-  .log-area{flex:1;background:rgba(0,0,0,0.28);border:1px solid rgba(255,255,255,0.04);border-radius:16px;padding:12px;overflow:auto;font-family:var(--mono);font-size:12px}
-  .log-item{display:flex;gap:10px;margin-bottom:8px}
-  .log-item .time{opacity:.35}
-  .log-item .msg{color:#9aa6b3;white-space:pre-wrap}
-  .log-item.exec .msg{color:#3dd5ff}
-
-  .monolith .buttons{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:8px}
-  .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:10px;border-radius:12px;border:none;cursor:pointer;font-weight:700;font-size:12px}
-  .btn.save{background: #ffffff;color:#000}
-  .btn.danger{background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.06);color:var(--text)}
-  .btn.danger:hover{background:rgba(255,0,0,0.08)}
-
-  /* Right card + deck */
-  .card-wrap{display:flex;flex-direction:column;gap:12px}
-  .card{background:rgba(0,0,0,0.60);border:1px solid rgba(255,255,255,0.08);border-radius:32px;overflow:hidden;backdrop-filter:blur(10px);transition:all .5s;box-shadow:0 20px 60px -20px rgba(0,0,0,0.8)}
-  .card.collapsed{height:80px}
-  .card-header{display:flex;align-items:center;justify-content:space-between;padding:18px;cursor:pointer}
-  .brand h1{margin:0;font-weight:300;font-size:18px}
-  .brand b{font-weight:800}
-  .pill{font-family:var(--mono);font-size:10px;letter-spacing:.18em}
-  .controls{display:flex;align-items:center;gap:8px}
-
-  .icon-btn{padding:8px;border-radius:12px;border:none;background:rgba(255,255,255,0.04);display:inline-flex;align-items:center;justify-content:center;cursor:pointer;color:white;}
-  .icon-btn.active{background: var(--primary);color:#000}
-  .chev{transition:transform .45s}
-  .chev.rot{transform:rotate(180deg)}
-
-  .card-body{padding:24px 28px 28px;opacity:1;transition:opacity .4s}
-  .card-body.hidden{opacity:0;height:0;padding:0 28px}
-
-  .profile{display:flex;flex-direction:column;align-items:center;gap:10px}
-  .avatar-wrap{position:relative}
-  .avatar{width:96px;height:96px;border-radius:50%;border:2px dashed;display:flex;align-items:center;justify-content:center;font-size:32px;font-weight:900;background:rgba(0,0,0,0.4)}
-  .lvl{position:absolute;right:-8px;bottom:-8px;background:rgba(0,0,0,0.6);border:1px solid rgba(255,255,255,0.06);padding:4px 8px;border-radius:8px;font-family:var(--mono);font-size:11px}
-
-  .controls-block{padding:10px 0;display:flex;flex-direction:column;gap:10px}
-  .label-row{display:flex;justify-content:space-between;align-items:flex-end}
-  .input-line{display:flex;gap:10px;align-items:center;background:rgba(255,255,255,0.03);padding:12px;border-radius:16px;border:1px solid rgba(255,255,255,0.04)}
-  .input-line input[type="text"]{background:transparent;border:none;outline:none;color:#fff;font-weight:700;font-size:14px;width:100%}
-
-  .progress-segs{display:flex;gap:6px;height:8px}
-  .seg{flex:1;background:rgba(255,255,255,0.03);border-radius:999px;overflow:hidden}
-  .seg .fill{height:100%;width:0%;transition:width 1s ease}
-
-  .revealed{transition:max-height .7s,opacity .7s;overflow:hidden}
-  .revealed.hidden{max-height:0;opacity:0}
-  .revealed.show{max-height:500px;opacity:1}
-
-  .reveal-box{background:rgba(0,0,0,0.6);padding:12px;border-radius:14px;border:1px solid rgba(255,255,255,0.04);font-family:var(--mono);font-size:12px;line-height:1.4}
-  .action-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-top:10px}
-  .btn.small{padding:10px;font-size:11px;border-radius:12px}
-
-  .mobile-only{display:block}
-  @media(min-width:1024px){ .mobile-only{display:none} }
-
-  .credit{text-align:center;font-family:var(--mono);font-size:10px;opacity:.18;letter-spacing:.25em}
-
-  /* App Deck inside card-wrap */
-  .deck{background:linear-gradient(180deg, rgba(255,255,255,0.01), transparent);border-radius:14px;padding:12px;border:1px solid rgba(255,255,255,0.03)}
-  .deck-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(90px,1fr));gap:12px}
-  .app-card{background:rgba(255,255,255,0.02);border-radius:12px;padding:8px;display:flex;flex-direction:column;align-items:center;gap:8px;cursor:pointer;position:relative}
-  .app-icon{width:48px;height:48px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:20px;background:rgba(0,0,0,0.25)}
-  .app-name{font-size:12px;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;width:100%}
-  .app-delete{position:absolute;right:8px;top:8px;background:transparent;border:none;color:rgba(255,255,255,0.4);cursor:pointer;display:none}
-  .app-card.editing .app-delete{display:block}
-
-  /* FAB */
-  .fab{position:fixed;right:26px;bottom:26px;width:56px;height:56px;border-radius:50%;background:var(--primary);color:#000;border:none;font-size:22px;cursor:pointer;z-index:40}
-
-  /* MODAL */
-  .modal{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.6);z-index:60;visibility:hidden;opacity:0;transition:.18s}
-  .modal.active{visibility:visible;opacity:1}
-  .modal-card{background:rgba(20,24,35,0.98);padding:18px;border-radius:14px;width:92%;max-width:480px;border:1px solid rgba(255,255,255,0.04)}
-
-  /* VIEWER */
-  .viewer{position:fixed;inset:0;background:#000;z-index:80;transform:translateY(110%);transition:.28s;display:flex;flex-direction:column}
-  .viewer.active{transform:translateY(0)}
-  .viewer-bar{height:56px;background:#05060a;color:#fff;display:flex;align-items:center;justify-content:space-between;padding:0 12px;border-bottom:1px solid rgba(255,255,255,0.04)}
-  #appFrame{flex:1;border:0;background:#fff}
-  .viewer-close{background:transparent;border:1px solid rgba(255,255,255,0.06);padding:8px;border-radius:8px;color:#fff;cursor:pointer}
-
-  /* Toast */
-  .toast{position:fixed;left:50%;transform:translateX(-50%) translateY(10px);bottom:24px;background:var(--primary);color:#000;padding:10px 18px;border-radius:999px;font-weight:900;font-family:var(--mono);font-size:11px;opacity:0;pointer-events:none;transition:all .45s}
-  .toast.show{opacity:1;transform:translateX(-50%) translateY(0);pointer-events:auto}
-</style>
-</head>
-<body>
-<div class="app">
-  <div id="bgGlow" class="glow"></div>
-
-  <div class="container">
-
-    <!-- LEFT: Monolith -->
-    <div class="monolith" id="monolithPanel" aria-hidden="false">
-      <div class="head">
-        <div class="mono-title">
-          <i data-lucide="server" style="width:18px;height:18px;"></i>
-          <h2>Painel Monólito KOBLLUX</h2>
-        </div>
-        <div class="status-pill" id="monoStatus">STATUS: IDLE</div>
-      </div>
-
-      <div class="grid-2">
-        <div>
-          <label class="small">OpenRouter Key</label>
-          <input id="skInput" type="password" placeholder="sk-...">
-        </div>
-        <div>
-          <label class="small">Modelo Ativo</label>
-          <select id="modelSelect">
-            <option value="deepseek/deepseek-chat">DeepSeek V3</option>
-            <option value="meta-llama/llama-3-70b">LLaMA 3 70B</option>
-            <option value="anthropic/claude-3-haiku">Claude 3 Haiku</option>
-          </select>
-        </div>
-      </div>
-
-      <div class="log-area" id="logs">
-        <!-- logs go here -->
-      </div>
-
-      <div class="buttons">
-        <button class="btn save" id="saveBtn" title="Salvar Config"><i data-lucide="save" style="width:16px;"></i> Salvar Config</button>
-        <button class="btn danger" id="snapshotBtn" title="Snapshot do app aberto"><i data-lucide="camera" style="width:16px;"></i> Snapshot</button>
-        <button class="btn danger" id="exportBtn" title="Exportar apps"><i data-lucide="download" style="width:16px;"></i> Export</button>
-      </div>
-
-      <div class="buttons" style="margin-top:8px">
-        <button class="btn danger" id="importBtn"><i data-lucide="upload" style="width:16px;"></i> Import</button>
-        <button class="btn danger" id="clearLogsBtn"><i data-lucide="trash-2" style="width:16px;"></i> Limpar Logs</button>
-        <button class="btn danger" id="clearDBBtn"><i data-lucide="database" style="width:16px;"></i> Limpar Apps</button>
-      </div>
-    </div>
-
-    <!-- RIGHT: Card + Deck -->
-    <div class="card-wrap">
-      <div id="card" class="card collapsed" role="region" aria-label="Dual Infodose Card">
-        <div class="card-header" id="cardHeader" title="Clique para abrir/fechar">
-          <div>
-            <div class="brand"><h1>Dual.<b id="brandAccent">Infodose</b></h1>
-            <p class="pill" id="identityText">Interface Locked</p></div>
-          </div>
-
-          <div class="controls">
-            <button id="micBtn" class="icon-btn" aria-pressed="false" title="Ativar/Desativar voz"><i data-lucide="mic"></i></button>
-            <button id="chevBtn" class="icon-btn chev" title="Abrir/Fechar"><i data-lucide="chevron-down"></i></button>
-          </div>
-        </div>
-
-        <div id="cardBody" class="card-body hidden">
-          <div class="profile">
-            <div class="avatar-wrap">
-              <div id="avatar" class="avatar">??</div>
-              <div class="lvl">LVL_5.3</div>
-            </div>
-          </div>
-
-          <div class="controls-block">
-            <div class="label-row">
-              <span style="font-size:10px;font-weight:800;opacity:.45;letter-spacing:.06em">Neural Codename</span>
-              <span id="syncText" style="font-family:var(--mono);font-weight:800;font-size:11px">0% SYNC</span>
-            </div>
-
-            <div class="input-line">
-              <input id="userInput" type="text" placeholder="Quem é você?">
-            </div>
-
-            <div class="progress-segs" id="progressSegs">
-              <div class="seg"><div class="fill" data-step="0"></div></div>
-              <div class="seg"><div class="fill" data-step="20"></div></div>
-              <div class="seg"><div class="fill" data-step="40"></div></div>
-              <div class="seg"><div class="fill" data-step="60"></div></div>
-              <div class="seg"><div class="fill" data-step="80"></div></div>
-            </div>
-          </div>
-
-          <div id="revealedSection" class="revealed hidden">
-            <div class="reveal-box">
-              <div style="position:absolute;right:10px;top:6px;opacity:.18"><i data-lucide="database" style="width:14px;"></i></div>
-              <p style="color:#3dd5ff;margin:0 0 8px 0">[ QUANTUM TOKEN ]</p>
-              <div id="activationInfo">ID: _SONIC_5.3<br>STATUS: CONNECTION_STABLE<br>ENCRYPTION: AES_256_KOBLLUX<br><span style="color:#ff69b4">PROMPT: ATIVAR_MODO_IA</span></div>
-            </div>
-
-            <div class="action-grid">
-              <button class="btn small" id="copyBtn"><i data-lucide="copy" style="width:14px;"></i> Copiar Ativação</button>
-              <button class="btn small" id="pngBtn" title="Gerar PNG"><i data-lucide="image" style="width:14px;"></i> PNG</button>
-              <button class="btn small" id="shareBtn" title="Compartilhar"><i data-lucide="share" style="width:14px;"></i> Share</button>
-              <div></div>
-            </div>
-          </div>
-
-          <div class="mobile-only" style="padding-top:12px;border-top:1px solid rgba(255,255,255,0.04);margin-top:12px">
-            <button class="btn danger" id="monolithSettingsBtn"><i data-lucide="settings" style="width:14px;"></i> Monolith Settings</button>
-          </div>
-        </div>
-      </div>
-
-      <!-- Deck below card -->
-      <div class="deck" id="deckPanel">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-          <strong>App Deck</strong>
-          <small style="font-family:var(--mono);opacity:.6" id="deckCount">0 apps</small>
-        </div>
-        <div class="deck-grid" id="deckGrid"></div>
-      </div>
-
-      <div class="credit">KOBLLUX · Senior Dev Mode · 2025</div>
-    </div>
-
-  </div>
-
-  <div id="fusion_toast" class="toast"><i data-lucide="check" style="width:14px; vertical-align:middle;margin-right:6px"></i> Ação Concluída</div>
-
-  <!-- FAB + MODAL + VIEWER -->
-  <button class="fab" id="openAdd">+</button>
-
-  <div class="modal" id="addModal" role="dialog" aria-modal="true">
-    <div class="modal-card">
-      <h3 style="margin:0 0 10px 0;color:var(--primary)">Novo App</h3>
-      <div style="display:flex;gap:8px;margin-bottom:10px;">
-        <button class="btn save" data-mode="file" id="tabFile">Arquivo</button>
-        <button class="btn danger" data-mode="url" id="tabUrl">URL</button>
-      </div>
-
-      <div style="margin-bottom:8px">
-        <label>Nome</label>
-        <input id="appName" placeholder="Meu App">
-      </div>
-
-      <div id="fileRow">
-        <label>Arquivo .html</label>
-        <input id="appFile" type="file" accept=".html">
-      </div>
-
-      <div id="urlRow" style="display:none">
-        <label>URL</label>
-        <input id="appUrl" type="url" placeholder="https://example.com">
-      </div>
-
-      <div style="display:flex;gap:8px;margin-top:12px">
-        <button class="btn save" id="saveAppBtn">Cristalizar App</button>
-        <button class="btn danger" id="cancelAddBtn">Cancelar</button>
-      </div>
-    </div>
-  </div>
-
-  <div class="viewer" id="viewer">
-    <div class="viewer-bar">
-      <div id="viewTitle">App</div>
-      <div>
-        <button class="viewer-close" id="viewerClose">Fechar</button>
-      </div>
-    </div>
-    <!-- 
-      SANDBOX EXPANDED: "allow scripts pra tudo"
-      Includes: scripts, same-origin, forms, modals, popups, downloads, presentation, pointer-lock.
-    -->
-    <iframe id="appFrame" sandbox="allow-scripts allow-same-origin allow-forms allow-modals allow-popups allow-presentation allow-downloads allow-pointer-lock"></iframe>
-  </div>
-
-</div>
-
-<script>
-/* ========== icons ========== */
-document.addEventListener('DOMContentLoaded', ()=>{
-  if(window.lucide) lucide.createIcons();
-});
-
-/* ========== DB (IndexedDB 'infodose_apps') ========== */
-const DB_NAME = 'infodose_apps';
-const STORE = 'apps';
-let db=null;
-
-function openDB(){
-  return new Promise((res,rej)=>{
-    const rq = indexedDB.open(DB_NAME,1);
-    rq.onupgradeneeded = e => {
-      const d = e.target.result;
-      if(!d.objectStoreNames.contains(STORE)) d.createObjectStore(STORE,{keyPath:'id',autoIncrement:true});
-    };
-    rq.onsuccess = e => { db = e.target.result; res(db); };
-    rq.onerror = e => rej(e);
-  });
-}
-
-function saveAppObj(obj){
-  return new Promise((res,rej)=>{
-    const tx = db.transaction(STORE,'readwrite');
-    tx.objectStore(STORE).add(obj);
-    tx.oncomplete = ()=> res();
-    tx.onerror = (ev)=> rej(ev);
-  });
-}
-
-function getAllApps(){
-  return new Promise(res=>{
-    const tx = db.transaction(STORE,'readonly');
-    const req = tx.objectStore(STORE).getAll();
-    req.onsuccess = ()=> res(req.result);
-  });
-}
-
-function deleteApp(id){
-  return new Promise(res=>{
-    const tx = db.transaction(STORE,'readwrite');
-    tx.objectStore(STORE).delete(id);
-    tx.oncomplete = ()=> res();
-  });
-}
-
-function clearApps(){
-  return new Promise(res=>{
-    const tx = db.transaction(STORE,'readwrite');
-    tx.objectStore(STORE).clear();
-    tx.oncomplete = ()=> res();
-  });
-}
-
-/* ========== DOM refs ========== */
-const logsEl = document.getElementById('logs');
-const skInput = document.getElementById('skInput');
-const modelSelect = document.getElementById('modelSelect');
-const saveBtn = document.getElementById('saveBtn');
-const clearLogsBtn = document.getElementById('clearLogsBtn');
-const snapshotBtn = document.getElementById('snapshotBtn');
-const exportBtn = document.getElementById('exportBtn');
-const importBtn = document.getElementById('importBtn');
-const clearDBBtn = document.getElementById('clearDBBtn');
-
-const card = document.getElementById('card');
-const cardHeader = document.getElementById('cardHeader');
-const chevBtn = document.getElementById('chevBtn');
-const cardBody = document.getElementById('cardBody');
-const micBtn = document.getElementById('micBtn');
-
-const userInputEl = document.getElementById('userInput');
-const avatarEl = document.getElementById('avatar');
-const syncText = document.getElementById('syncText');
-const progressFills = document.querySelectorAll('.fill');
-const identityText = document.getElementById('identityText');
-const revealedSection = document.getElementById('revealedSection');
-const activationInfo = document.getElementById('activationInfo');
-const copyBtn = document.getElementById('copyBtn');
-const pngBtn = document.getElementById('pngBtn');
-const shareBtn = document.getElementById('shareBtn');
-const monolithSettingsBtn = document.getElementById('monolithSettingsBtn');
-
-const deckGrid = document.getElementById('deckGrid');
-const deckCount = document.getElementById('deckCount');
-const openAdd = document.getElementById('openAdd');
-const addModal = document.getElementById('addModal');
-const tabFile = document.getElementById('tabFile');
-const tabUrl = document.getElementById('tabUrl');
-const fileRow = document.getElementById('fileRow');
-const urlRow = document.getElementById('urlRow');
-const appName = document.getElementById('appName');
-const appFile = document.getElementById('appFile');
-const appUrl = document.getElementById('appUrl');
-const saveAppBtn = document.getElementById('saveAppBtn');
-const cancelAddBtn = document.getElementById('cancelAddBtn');
-
-const viewer = document.getElementById('viewer');
-const appFrame = document.getElementById('appFrame');
-const viewTitle = document.getElementById('viewTitle');
-const viewerClose = document.getElementById('viewerClose');
-
-const toast = document.getElementById('fusion_toast');
-
-let logs = [{time:(new Date()).toLocaleTimeString(), msg:'SYSTEM_READY // V5.3'}];
-function addLog(msg){
-  logs.unshift({time:(new Date()).toLocaleTimeString(), msg});
-  if(logs.length>200) logs = logs.slice(0,200);
-  renderLogs();
-}
-function renderLogs(){
-  logsEl.innerHTML = '';
-  logs.forEach(it=>{
-    const div = document.createElement('div');
-    div.className = 'log-item' + (it.msg.includes('EXEC') ? ' exec' : '');
-    div.innerHTML = '<div class="time">['+it.time+']</div><div class="msg">'+escapeHtml(it.msg)+'</div>';
-    logsEl.appendChild(div);
-  });
-}
-function escapeHtml(s){ return String(s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
-
-/* visual / voice helpers (kept from your monolith) */
-function getThemeColor(text){
-  if(!text) return '#4fd4ff';
-  let h=0; for(let i=0;i<text.length;i++) h = text.charCodeAt(i)+((h<<5)-h);
-  const hue = Math.abs(h%360);
-  return `hsl(${hue},70%,55%)`;
-}
-function applyAccent(text){
-  const accent = getThemeColor(text);
-  document.getElementById('brandAccent').style.color = accent;
-  avatarEl.style.borderColor = accent;
-  avatarEl.style.color = accent;
-  document.getElementById('bgGlow').style.background = `radial-gradient(circle at 50% 50%, ${accent}11 0%, transparent 70%)`;
-}
-function updateSyncFromInput(text){
-  const s = Math.min(Math.round((text.length/12)*100),100);
-  syncText.textContent = `${s}% SYNC`;
-  progressFills.forEach(el=>{
-    const step = parseInt(el.getAttribute('data-step'));
-    if(s>step) el.style.width='100%'; else el.style.width='0%';
-    el.style.background = getThemeColor(text);
-  });
-}
-let revealed=false;
-function computeRevealed(){
-  const s = parseInt(syncText.textContent) || 0;
-  if(s >= 30 && !revealed){
-    revealed = true;
-    addLog('IDENTITY_CONFIRMED: Access Granted');
-    revealedSection.classList.remove('hidden'); revealedSection.classList.add('show');
-    document.getElementById('monoStatus').textContent = 'STATUS: STABLE';
-    identityText.textContent = 'Identity Confirmed';
-  } else if(s < 30 && revealed){
-    revealed = false;
-    addLog('IDENTITY_LOST: Interface Locked');
-    revealedSection.classList.add('hidden'); revealedSection.classList.remove('show');
-    document.getElementById('monoStatus').textContent = 'STATUS: IDLE';
-    identityText.textContent = 'Interface Locked';
-  }
-}
-function updateAvatar(text){ const s=(text||'').trim(); avatarEl.textContent = s ? s.substring(0,2).toUpperCase() : '??'; }
-
-/* toast */
-let tt=null;
-function showToast(msg,ms=1800){
-  toast.innerHTML = '<i data-lucide="check" style="width:14px; vertical-align:middle;margin-right:6px"></i>' + msg;
-  lucide.createIcons();
-  toast.classList.add('show'); clearTimeout(tt); tt=setTimeout(()=>toast.classList.remove('show'), ms); 
-}
-
-/* card toggle & voice minimal */
-let isCardOpen=false;
-function toggleCard(){ isCardOpen=!isCardOpen; if(isCardOpen){ card.classList.remove('collapsed'); cardBody.classList.remove('hidden'); chevBtn.classList.add('rot'); } else { card.classList.add('collapsed'); cardBody.classList.add('hidden'); chevBtn.classList.remove('rot'); } }
-cardHeader.addEventListener('click', toggleCard);
-chevBtn.addEventListener('click', (e)=>{ e.stopPropagation(); toggleCard(); });
-
-let voiceEnabled=false;
-function toggleVoice(){ voiceEnabled=!voiceEnabled; micBtn.classList.toggle('active', voiceEnabled); addLog(voiceEnabled ? 'VOICE_ONLINE' : 'VOICE_OFFLINE'); if(voiceEnabled) showToast('Voz ativada'); }
-micBtn.addEventListener('click', (e)=>{ e.stopPropagation(); toggleVoice(); });
-
-/* update input -> visuals */
-userInputEl.addEventListener('input', (e)=>{ const v=e.target.value; localStorage.setItem('fusion_user', v); applyAccent(v); updateAvatar(v); updateSyncFromInput(v); computeRevealed(); activationInfo.innerHTML = 'ID: ' + ((v||'').toUpperCase().replace(/\s/g,'_') || '_SONIC_5.3') + '<br>STATUS: CONNECTION_STABLE<br>ENCRYPTION: AES_256_KOBLLUX<br><span style="color:#ff69b4">PROMPT: ATIVAR_MODO_IA</span>'; });
-
-copyBtn.addEventListener('click', ()=>{ const id = (userInputEl.value||'').toUpperCase().replace(/\s/g,'_') + '_SONIC_5.3'; navigator.clipboard?.writeText(id).then(()=>{ showToast('ID copiado'); addLog('ACTIVATION_COPIED'); }, ()=>{ showToast('Falha'); }); });
-pngBtn.addEventListener('click', ()=>{ addLog('PNG_REQUESTED'); showToast('PNG gerado (simulado)'); });
-shareBtn.addEventListener('click', ()=>{ addLog('SHARE_REQUESTED'); showToast('Compartilhar (simulado)'); });
-monolithSettingsBtn.addEventListener('click', ()=>{ addLog("MOBILE_CONFIG_REQUESTED"); showToast('Monolith settings'); });
-
-/* ========== App Deck UI + runtime ========== */
-
-let currentOpenedApp = null; // {id, type, content, title}
-async function loadGrid(){
-  const list = await getAllApps();
-  deckGrid.innerHTML = '';
-  deckCount.textContent = `${list.length} apps`;
-  if(list.length===0){ deckGrid.innerHTML = '<div style="grid-column:1/-1;opacity:.5;text-align:center;padding:22px">Deck vazio</div>'; return; }
-  list.forEach(app=>{
-    const c = document.createElement('div'); c.className='app-card';
-    c.innerHTML = `<div class="app-icon">${escapeHtml(app.icon||'⚡')}</div><div class="app-name">${escapeHtml(app.title)}</div><button class="app-delete" title="Deletar">✕</button>`;
-    c.querySelector('.app-delete').onclick = async (ev)=>{ ev.stopPropagation(); if(!confirm('Deletar app?')) return; await deleteApp(app.id); addLog('APP_DELETED: '+app.title); await loadGrid(); showToast('App removido'); };
-    c.onclick = ()=> launchApp(app.id);
-    deckGrid.appendChild(c);
-  });
-}
-
-/* open app: if type=file => create blob + set srcdoc or src -> inject consoleBridge; if url, set src (no bridge) */
-function createConsoleBridge(){
-  return `<script>
-    (function(){
-      const oldLog = console.log;
-      console.log = function(){ oldLog.apply(console, arguments); try{ window.parent.postMessage({type:'console-log', msgs: Array.from(arguments).map(String)}, '*'); }catch(e){} };
-      window.onerror = function(msg,src,ln){ try{ window.parent.postMessage({type:'console-error', msgs:[String(msg)+ ' @'+src+':'+ln]}, '*'); }catch(e){} };
-    })();
-  <\/script>`;
-}
-
-async function launchApp(id){
-  const tx = db.transaction(STORE,'readonly');
-  const req = tx.objectStore(STORE).get(id);
-  req.onsuccess = async ()=>{
-    const app = req.result;
-    if(!app) return;
-    currentOpenedApp = app;
-    viewTitle.textContent = app.title;
-    // open viewer
-    viewer.classList.add('active');
-    // if file (stored HTML) -> use srcdoc and inject console bridge
-    if(app.type === 'file'){
-      const bridge = createConsoleBridge();
-      appFrame.srcdoc = bridge + app.content;
-      // keep attribute sandbox; allow attribute can be expanded if you want (microphone etc.)
-      addLog('EXEC_SRCDOC: ' + app.title);
-    } else {
-      // url: set src (cannot inject bridge due to cross-origin)
-      try{
-        appFrame.removeAttribute('srcdoc');
-        appFrame.src = app.content;
-        addLog('EXEC_URL: ' + app.title);
-      }catch(e){
-        addLog('EXEC_URL_ERR: ' + e.message);
+  <meta charset="utf-8" />
+  <title>DUAL // UNIFIED · OS</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#020202">
+  <meta name="description" content="DUAL Unified — Code Vault & Runtime Environment">
+
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Fonts & Icons -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@200;400;500;600;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.0.6/purify.min.js"></script>
+
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            ui: ['Inter', 'sans-serif'],
+            code: ['JetBrains Mono', 'monospace'],
+          },
+          colors: {
+            dual: {
+              bg: '#020202',
+              glass: 'rgba(15, 15, 20, 0.75)',
+              border: 'rgba(255, 255, 255, 0.08)',
+              cyan: '#00f2ff',
+              purple: '#bd00ff',
+              alert: '#ff4d4d',
+            }
+          },
+          animation: {
+            'scan': 'scan 3s linear infinite',
+            'spin-slow': 'spin 8s linear infinite',
+            'slide-up': 'slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards',
+          },
+          keyframes: {
+            scan: {
+              '0%': { transform: 'translateX(-100%)' },
+              '100%': { transform: 'translateX(200%)' }
+            },
+            slideUp: {
+              '0%': { transform: 'translateY(20px)', opacity: '0' },
+              '100%': { transform: 'translateY(0)', opacity: '1' }
+            }
+          }
+        }
       }
     }
-  };
-}
+  </script>
 
-/* Snapshot: salva conteúdo atualmente carregado (somente se for srcdoc or blob) */
-snapshotBtn.addEventListener('click', async ()=>{
-  if(!currentOpenedApp){
-    showToast('Nenhum app aberto');
-    return;
-  }
-  // only allow snapshot if content available (file type)
-  if(currentOpenedApp.type === 'file'){
-    const title = prompt('Nome do snapshot', currentOpenedApp.title) || currentOpenedApp.title;
-    const obj = { title, icon: '⚡', type: 'file', content: currentOpenedApp.content, ts: Date.now() };
-    await saveAppObj(obj);
-    await loadGrid();
-    addLog('SNAPSHOT_SAVED: '+title);
-    showToast('Snapshot salvo');
-    return;
-  }
-  // for URL type, try to fetch HTML (CORS permitting) and save; otherwise warn
-  try{
-    const r = await fetch(currentOpenedApp.content, {mode:'cors'});
-    if(!r.ok) throw new Error('Fetch failed');
-    const txt = await r.text();
-    const title = prompt('Nome do snapshot (da URL)', currentOpenedApp.title) || currentOpenedApp.title;
-    const obj = { title, icon: '🌐', type: 'file', content: txt, ts: Date.now() };
-    await saveAppObj(obj);
-    await loadGrid();
-    addLog('SNAPSHOT_FETCHED_AND_SAVED: '+title);
-    showToast('Snapshot salvo (fetched)');
-  }catch(e){
-    addLog('SNAPSHOT_FAIL: ' + e.message);
-    showToast('Snapshot falhou (CORS?)');
-  }
-});
+  <style>
+    :root {
+      --glass-surface: rgba(12, 12, 14, 0.7);
+      --glass-border: rgba(255, 255, 255, 0.08);
+      --neon-cyan: #00f2ff;
+    }
+    body { background-color: #020202; overflow: hidden; }
 
-/* modal + add app */
-openAdd.addEventListener('click', ()=> addModal.classList.add('active'));
-cancelAddBtn.addEventListener('click', ()=> addModal.classList.remove('active'));
-tabFile.addEventListener('click', ()=>{ fileRow.style.display='block'; urlRow.style.display='none'; tabFile.classList.add('save'); tabUrl.classList.remove('save'); });
-tabUrl.addEventListener('click', ()=>{ fileRow.style.display='none'; urlRow.style.display='block'; tabUrl.classList.add('save'); tabFile.classList.remove('save'); });
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 4px; height: 4px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 2px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--neon-cyan); }
 
-saveAppBtn.addEventListener('click', async ()=>{
-  const name = (appName.value||'App Sem Nome').trim();
-  if(fileRow.style.display !== 'none'){
-    const f = appFile.files[0];
-    if(!f){ alert('Selecione arquivo .html'); return; }
-    const txt = await f.text();
-    const obj = { title: name, icon: '⚡', type:'file', content: txt, ts: Date.now() };
-    await saveAppObj(obj);
-    addLog('APP_SAVED: ' + name);
-    showToast('App salvo');
-    addModal.classList.remove('active'); appName.value=''; appFile.value='';
-    await loadGrid();
-    return;
-  } else {
-    const url = (appUrl.value||'').trim();
-    if(!url){ alert('Digite URL'); return; }
-    const obj = { title: name, icon: '🌐', type:'url', content: url, ts: Date.now() };
-    await saveAppObj(obj);
-    addLog('APP_SAVED_URL: ' + name);
-    showToast('App URL salvo');
-    addModal.classList.remove('active'); appName.value=''; appUrl.value='';
-    await loadGrid();
-    return;
-  }
-});
+    /* Monolith 3D Effect */
+    .monolith-wrapper {
+      perspective: 1200px;
+      transition: transform 0.6s cubic-bezier(0.23, 1, 0.32, 1);
+    }
+    .monolith {
+      background: var(--glass-surface);
+      backdrop-filter: blur(24px) saturate(180%);
+      -webkit-backdrop-filter: blur(24px) saturate(180%);
+      border: 1px solid var(--glass-border);
+      box-shadow: 0 40px 80px -12px rgba(0, 0, 0, 0.8);
+      transform-style: preserve-3d;
+      opacity: 0;
+      transform: translateY(60px) rotateX(10deg) scale(0.95);
+      transition: all 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+      pointer-events: none;
+    }
+    body.system-active .monolith {
+      opacity: 1;
+      transform: translateY(0) rotateX(0) scale(1);
+      pointer-events: auto;
+    }
 
-/* viewer controls */
-viewerClose.addEventListener('click', ()=>{ viewer.classList.remove('active'); appFrame.src = 'about:blank'; appFrame.srcdoc = ''; currentOpenedApp = null; });
+    /* Runtime Layer */
+    .runtime-layer {
+      transform: translateY(100%);
+      transition: transform 0.5s cubic-bezier(0.76, 0, 0.24, 1);
+    }
+    .runtime-layer.visible { transform: translateY(0); }
 
-/* console bridge listener */
-window.addEventListener('message', (ev)=>{
-  // note: origin checks: when using local file origin may be "null"; we allow 'null' and same-origin
-  if (ev.origin !== 'null' && ev.origin !== window.location.origin) {
-    // allow only console messages - but skip if different origin
-    // return;
-  }
-  const d = ev.data;
-  if(!d || typeof d !== 'object') return;
-  if(d.type === 'console-log') {
-    addLog('RUNTIME: ' + d.msgs.join(' '));
-  }
-  if(d.type === 'console-error') {
-    addLog('RUNTIME_ERR: ' + d.msgs.join(' '));
-  }
-});
+    /* Ambient */
+    .void-ambient {
+      position: fixed; inset: 0; pointer-events: none;
+      background: radial-gradient(circle at 50% 120%, rgba(0, 242, 255, 0.05), transparent 60%);
+    }
 
-/* export/import */
-exportBtn.addEventListener('click', async ()=> {
-  const arr = await getAllApps();
-  const b = new Blob([JSON.stringify(arr, null, 2)], { type:'application/json' });
-  const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = 'infodose_apps.json'; a.click();
-  addLog('EXPORT_DONE');
-});
-importBtn.addEventListener('click', ()=> {
-  const inp = document.createElement('input'); inp.type='file'; inp.accept='application/json';
-  inp.onchange = async (e)=> {
-    const f = e.target.files[0]; if(!f) return;
-    const txt = await f.text();
-    try{
-      const arr = JSON.parse(txt);
-      const tx = db.transaction(STORE,'readwrite'); const store = tx.objectStore(STORE);
-      arr.forEach(it=> store.add(it));
-      tx.oncomplete = async ()=> { await loadGrid(); addLog('IMPORT_COMPLETE'); showToast('Import completo'); };
-    }catch(err){ alert('JSON inválido'); }
-  };
-  inp.click();
-});
+    /* Orb */
+    .orb-container {
+      transition: all 0.5s ease;
+    }
+    body.system-active .orb-container {
+      bottom: 2rem; transform: translateX(-50%) scale(0.8);
+    }
+    .orb {
+      background: rgba(0,0,0,0.6);
+      backdrop-filter: blur(10px);
+      box-shadow: 0 0 0 1px rgba(255,255,255,0.1), 0 0 30px rgba(0,242,255,0.15);
+      transition: 0.3s;
+    }
+    .orb:hover { box-shadow: 0 0 0 1px var(--neon-cyan), 0 0 50px rgba(0,242,255,0.4); }
 
-/* clear DB */
-clearDBBtn.addEventListener('click', async ()=> {
-  if(!confirm('Limpar todos os apps?')) return;
-  await clearApps();
-  await loadGrid();
-  addLog('DB_CLEARED');
-});
+    /* Scanline overlay */
+    .scanline {
+      background: linear-gradient(to bottom, rgba(255,255,255,0), rgba(255,255,255,0) 50%, rgba(0,0,0,0.2) 50%, rgba(0,0,0,0.2));
+      background-size: 100% 4px;
+      pointer-events: none;
+    }
+    
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body class="antialiased text-white selection:bg-dual-cyan selection:text-black font-ui">
 
-/* clear logs */
-clearLogsBtn.addEventListener('click', ()=> { logs = [{time:(new Date()).toLocaleTimeString(), msg:'LOGS_CLEARED'}]; renderLogs(); });
+  <!-- Ambient & Nav Frame -->
+  <div class="void-ambient z-0"></div>
+  <iframe id="navFrame" src="./index.html" class="fixed inset-0 w-full h-full border-0 z-0 bg-black opacity-50 transition-opacity duration-500"></iframe>
 
-/* save config (monolith) */
-saveBtn.addEventListener('click', ()=> {
-  localStorage.setItem('INFODOSE_OPENROUTER_SK', skInput.value);
-  localStorage.setItem('INFODOSE_OPENROUTER_MODEL', modelSelect.value);
-  addLog('CONFIG_SAVED');
-  showToast('Config salva');
-});
+  <!-- Top Bar -->
+  <div class="fixed top-6 left-1/2 -translate-x-1/2 z-40 flex items-center gap-4 bg-black/40 backdrop-blur px-4 py-2 rounded-full border border-white/5">
+    <div class="text-xs font-code text-gray-400 tracking-widest">DUAL // UNIFIED</div>
+    <div class="h-3 w-[1px] bg-white/20"></div>
+    <button id="themeToggle" class="text-gray-400 hover:text-white transition-colors"><i class="fa-solid fa-circle-half-stroke"></i></button>
+  </div>
 
-/* boot DB + UI */
-(async function boot(){
-  await openDB();
-  await loadGrid();
-  renderLogs();
-  // restore persisted user
-  const u = localStorage.getItem('fusion_user') || '';
-  userInputEl.value = u;
-  applyAccent(u); updateAvatar(u); updateSyncFromInput(u); computeRevealed();
-  addLog('DB_READY');
-})();
+  <!-- Right Sidebar (Navigator) - COMPACT -->
+  <div class="fixed right-2 top-1/2 -translate-y-1/2 flex flex-col gap-2 z-40">
+    <button class="w-8 h-8 rounded-lg bg-black/40 border border-white/5 text-dual-cyan hover:bg-dual-cyan hover:text-black transition-all backdrop-blur-sm flex items-center justify-center font-code text-sm" data-url="about:blank" title="Void">Φ</button>
+    <button class="w-8 h-8 rounded-lg bg-black/40 border border-white/5 text-dual-cyan hover:bg-dual-cyan hover:text-black transition-all backdrop-blur-sm flex items-center justify-center font-code text-sm" data-url="https://kodux78k.github.io/oiDual-Vivivi-1/" title="Vivivi">꩜</button>
+    <button class="w-8 h-8 rounded-lg bg-black/40 border border-white/5 text-dual-cyan hover:bg-dual-cyan hover:text-black transition-all backdrop-blur-sm flex items-center justify-center font-code text-sm" data-url="https://kodux78k.github.io/NosSolar-dualInfodose/" title="Nosolar">☼</button>
+  </div>
 
-/* small: keyboard E toggles deck editing (show delete buttons) */
-document.addEventListener('keydown', (e)=>{ if(e.key.toLowerCase()==='e'){ document.querySelectorAll('.app-card').forEach(c=> c.classList.toggle('editing')); } });
-</script>
+  <!-- Left Sidebar (Tools) - COMPACT -->
+  <div class="fixed left-2 top-1/2 -translate-y-1/2 flex flex-col gap-2 z-40">
+    <button id="uploadBtn" class="w-8 h-8 rounded-lg bg-black/40 border border-white/5 text-gray-400 hover:text-white hover:border-dual-cyan/50 transition-all backdrop-blur-sm flex items-center justify-center"><i class="fa-solid fa-upload"></i></button>
+    <input type="file" id="uploadInput" hidden accept=".html,.js,.json">
+    <button id="remoteBtn" class="w-8 h-8 rounded-lg bg-black/40 border border-white/5 text-gray-400 hover:text-white hover:border-dual-cyan/50 transition-all backdrop-blur-sm flex items-center justify-center"><i class="fa-solid fa-globe"></i></button>
+  </div>
+
+  <!-- MONOLITH (Main UI) -->
+  <div class="monolith-wrapper fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
+    <div class="monolith w-full max-w-5xl h-[80vh] max-h-[850px] rounded-3xl flex flex-col overflow-hidden relative shadow-2xl">
+      
+      <!-- Header -->
+      <div class="flex justify-between items-center px-6 py-5 border-b border-white/5 bg-white/[0.02]">
+        <div class="flex items-center gap-3">
+          <div class="w-8 h-8 rounded bg-dual-cyan/10 flex items-center justify-center border border-dual-cyan/20">
+            <i data-lucide="layers" class="text-dual-cyan w-4 h-4"></i>
+          </div>
+          <div class="font-ui font-bold tracking-wide text-sm text-gray-200">DUAL <span class="text-white/30">//</span> MONOLITH</div>
+        </div>
+        <div id="sysStatus" class="font-code text-[10px] px-2 py-1 rounded bg-white/5 border border-white/5 text-gray-500 tracking-widest uppercase">STANDBY</div>
+      </div>
+
+      <!-- Content Area -->
+      <div class="flex-1 flex overflow-hidden relative">
+        
+        <!-- View: VAULT (List) -->
+        <div id="viewVault" class="w-full h-full flex flex-col p-6 overflow-y-auto transition-transform duration-500">
+          
+          <!-- Actions -->
+          <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+            <button id="createBtn" class="flex items-center justify-center gap-2 p-4 rounded-xl bg-dual-cyan text-black font-bold hover:bg-white transition-all shadow-lg shadow-dual-cyan/20">
+              <i data-lucide="plus-square" class="w-4 h-4"></i>
+              <span>NOVO</span>
+            </button>
+            <div id="dropZone" class="flex items-center justify-center gap-2 p-4 rounded-xl border border-dashed border-white/20 hover:border-dual-cyan hover:bg-dual-cyan/5 text-gray-400 hover:text-white cursor-pointer transition-all">
+              <i data-lucide="upload" class="w-4 h-4"></i>
+              <span class="text-sm font-code">UPLOAD</span>
+            </div>
+            <button id="infodoseBtn" class="flex items-center justify-center gap-2 p-4 rounded-xl bg-white/5 border border-white/5 hover:bg-white/10 hover:border-dual-cyan/30 transition-all">
+              <i data-lucide="zap" class="w-4 h-4 text-dual-cyan"></i>
+              <span class="text-sm">INFODOSE</span>
+            </button>
+            <button id="safeBtn" class="flex items-center justify-center gap-2 p-4 rounded-xl bg-white/5 border border-white/5 hover:bg-white/10 hover:border-dual-alert/30 transition-all group">
+              <i data-lucide="shield" class="w-4 h-4 text-dual-alert group-hover:text-white"></i>
+              <span class="text-sm" id="safeLabel">SAFE</span>
+            </button>
+          </div>
+
+          <!-- List -->
+          <div class="flex items-center justify-between mb-3 px-1">
+            <span class="text-xs font-code text-gray-500">VAULT STORAGE</span>
+            <span class="text-xs font-code text-gray-600" id="vaultCount">0 ITEMS</span>
+          </div>
+          <div id="stackList" class="flex flex-col gap-3 pb-12">
+            <!-- Dynamic Items -->
+          </div>
+        </div>
+
+        <!-- View: EDITOR (Uno) -->
+        <div id="viewEditor" class="absolute inset-0 bg-[#08080a] p-6 flex flex-col transform translate-x-full transition-transform duration-500 z-10">
+          <div class="flex justify-between items-center mb-4">
+            <div class="text-dual-cyan font-code text-sm">:: MODULE CREATOR</div>
+            <button id="cancelEditor" class="text-xs bg-white/10 hover:bg-white/20 px-3 py-1 rounded text-gray-300">CANCELAR</button>
+          </div>
+          
+          <input id="modTitle" type="text" placeholder="NOME DO MÓDULO (ex: Widget Clima)" class="w-full bg-white/5 border border-white/10 rounded-lg p-3 text-sm font-code text-white mb-3 focus:border-dual-cyan focus:outline-none placeholder-gray-600">
+          
+          <div class="flex-1 relative border border-white/10 rounded-lg overflow-hidden bg-black/50">
+            <textarea id="modContent" class="w-full h-full bg-transparent p-4 text-xs font-code text-green-400 focus:outline-none resize-none" placeholder="<!-- Escreva seu HTML/CSS/JS aqui -->"></textarea>
+          </div>
+          
+          <div class="flex gap-3 mt-4">
+            <button id="saveEditor" class="flex-1 bg-dual-cyan text-black font-bold py-3 rounded-xl hover:bg-white transition-colors">SALVAR NO VAULT</button>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Pulse Footer -->
+      <div class="h-1 w-full bg-black mt-auto relative overflow-hidden">
+        <div id="pulseBar" class="absolute inset-y-0 left-0 w-1/2 bg-gradient-to-r from-transparent via-dual-cyan to-transparent animate-scan opacity-0 transition-opacity"></div>
+      </div>
+
+      <!-- Runtime Overlay (Inside Monolith) -->
+      <div id="runtimeLayer" class="runtime-layer absolute inset-0 bg-black z-20 flex flex-col">
+        <div class="h-10 bg-[#0a0a0c] border-b border-white/10 flex items-center justify-between px-4 shrink-0">
+          <div class="flex items-center gap-2">
+            <div class="w-2 h-2 rounded-full bg-dual-cyan animate-pulse"></div>
+            <span class="font-code text-xs text-dual-cyan tracking-wider">RUNTIME // ACTIVE</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <button id="exportBtn" class="text-[10px] bg-white/10 hover:bg-white/20 px-2 py-1 rounded text-gray-400 hover:text-white transition-colors">EXPORT TO NAV</button>
+            <button id="closeRuntime" class="w-6 h-6 flex items-center justify-center text-gray-500 hover:text-red-500 hover:bg-white/5 rounded transition-colors"><i data-lucide="x" class="w-4 h-4"></i></button>
+          </div>
+        </div>
+        <div class="flex-1 relative bg-white">
+          <iframe id="appFrame" class="w-full h-full border-0" sandbox="allow-scripts allow-forms allow-modals allow-same-origin allow-pointer-lock"></iframe>
+          <div class="scanline absolute inset-0 pointer-events-none opacity-20 mix-blend-overlay"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Orb Trigger (Compact) -->
+  <div class="orb-container fixed bottom-6 left-1/2 -translate-x-1/2 z-[60]">
+    <button id="orbBtn" class="orb w-14 h-14 rounded-full flex items-center justify-center relative group" aria-label="Toggle System">
+      <div class="w-2 h-2 bg-white rounded-full shadow-[0_0_15px_white] transition-all group-hover:bg-dual-cyan group-hover:shadow-[0_0_25px_#00f2ff]"></div>
+      <div class="absolute inset-1 rounded-full border border-t-dual-cyan/60 border-r-transparent border-b-transparent border-l-transparent animate-spin-slow opacity-60"></div>
+      <div class="absolute inset-3 rounded-full border border-b-dual-purple/60 border-l-transparent border-t-transparent border-r-transparent animate-spin-slow opacity-40" style="animation-direction: reverse;"></div>
+    </button>
+  </div>
+
+  <!-- Toast -->
+  <div id="toast" class="fixed top-20 left-1/2 -translate-x-1/2 px-4 py-2 rounded-lg bg-black/90 border border-dual-cyan/30 text-dual-cyan font-code text-xs shadow-2xl z-[100] transition-all duration-300 opacity-0 pointer-events-none translate-y-[-10px]">
+    <span id="toastMsg">System Ready</span>
+  </div>
+
+  <!-- Modal Loader Component -->
+  <script>
+    class MyFrameLoader extends HTMLElement {
+      constructor(){
+        super();
+        this.attachShadow({mode:'open'});
+        this.shadowRoot.innerHTML = `
+          <style>
+            :host { all: initial; font-family: sans-serif; }
+            .overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.85); backdrop-filter: blur(5px); display: flex; align-items: center; justify-content: center; z-index: 99999; }
+            .box { width: 90%; height: 85%; background: #000; border: 1px solid #333; border-radius: 12px; overflow: hidden; display: flex; flex-direction: column; animation: pop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+            .header { padding: 8px 12px; border-bottom: 1px solid #222; display: flex; justify-content: flex-end; background: #0a0a0a; }
+            button { background: none; border: none; color: #fff; cursor: pointer; font-size: 16px; opacity: 0.6; }
+            button:hover { opacity: 1; color: #f00; }
+            iframe { flex: 1; border: none; background: #fff; }
+            @keyframes pop { from { transform: scale(0.9); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+          </style>
+          <div class="overlay"><div class="box">
+            <div class="header"><button id="c">✕</button></div>
+            <iframe sandbox="allow-scripts allow-forms allow-same-origin"></iframe>
+          </div></div>
+        `;
+        this.iframe = this.shadowRoot.querySelector('iframe');
+        this.shadowRoot.querySelector('#c').onclick = () => this.remove();
+        this.shadowRoot.querySelector('.overlay').onclick = (e) => { if(e.target===e.currentTarget) this.remove(); }
+      }
+      set src(v){ this.iframe.src = v; }
+    }
+    customElements.define('my-frame-loader', MyFrameLoader);
+  </script>
+
+  <script>
+    const App = {
+      config: {
+        vaultKey: 'dual_unified_vault',
+        themeKey: 'dual_theme',
+        navKey: 'dual_nav_last'
+      },
+      state: {
+        active: false,
+        safeMode: true,
+        infodose: false,
+        stacks: []
+      },
+      
+      init() {
+        this.cacheDOM();
+        this.loadData();
+        this.bindEvents();
+        if(window.lucide) lucide.createIcons();
+        
+        // Boot Sequence
+        setTimeout(() => this.toggleSystem(true), 600);
+      },
+
+      cacheDOM() {
+        this.dom = {
+          body: document.body,
+          navFrame: document.getElementById('navFrame'),
+          orbBtn: document.getElementById('orbBtn'),
+          sysStatus: document.getElementById('sysStatus'),
+          stackList: document.getElementById('stackList'),
+          viewVault: document.getElementById('viewVault'),
+          viewEditor: document.getElementById('viewEditor'),
+          runtimeLayer: document.getElementById('runtimeLayer'),
+          appFrame: document.getElementById('appFrame'),
+          modTitle: document.getElementById('modTitle'),
+          modContent: document.getElementById('modContent'),
+          toast: document.getElementById('toast'),
+          pulseBar: document.getElementById('pulseBar'),
+          safeLabel: document.getElementById('safeLabel')
+        };
+      },
+
+      bindEvents() {
+        // System Toggle
+        this.dom.orbBtn.addEventListener('click', () => this.toggleSystem());
+        
+        // Navigation Buttons (Right Sidebar)
+        document.querySelectorAll('[data-url]').forEach(btn => {
+          btn.addEventListener('click', () => {
+            this.dom.navFrame.src = btn.dataset.url;
+            this.showToast(`NAV: ${btn.title}`);
+          });
+        });
+
+        // Editor Controls
+        document.getElementById('createBtn').addEventListener('click', () => this.toggleEditor(true));
+        document.getElementById('cancelEditor').addEventListener('click', () => this.toggleEditor(false));
+        document.getElementById('saveEditor').addEventListener('click', () => this.saveModule());
+        
+        // Vault Actions
+        document.getElementById('dropZone').addEventListener('click', () => document.getElementById('uploadInput').click());
+        document.getElementById('uploadInput').addEventListener('change', (e) => this.handleUpload(e));
+        document.getElementById('uploadBtn').addEventListener('click', () => document.getElementById('uploadInput').click());
+        
+        // Features
+        document.getElementById('safeBtn').addEventListener('click', () => this.toggleSafe());
+        document.getElementById('infodoseBtn').addEventListener('click', () => this.toggleInfodose());
+        document.getElementById('themeToggle').addEventListener('click', () => {
+           this.dom.body.classList.toggle('theme-light');
+           this.showToast("THEME TOGGLED");
+        });
+        
+        // Runtime
+        document.getElementById('closeRuntime').addEventListener('click', () => this.closeRuntime());
+        document.getElementById('exportBtn').addEventListener('click', () => {
+          if(this.dom.appFrame.srcdoc) {
+            const blob = new Blob([this.dom.appFrame.srcdoc], {type:'text/html'});
+            this.dom.navFrame.src = URL.createObjectURL(blob);
+            this.showToast("EXPORTED TO NAV");
+            this.closeRuntime();
+          }
+        });
+      },
+
+      loadData() {
+        // Vault
+        try {
+          const raw = localStorage.getItem(this.config.vaultKey);
+          if(raw) this.state.stacks = JSON.parse(raw);
+        } catch(e) { this.state.stacks = []; }
+        this.renderVault();
+        
+        // Nav Persistence
+        const last = localStorage.getItem(this.config.navKey);
+        if(last && last !== 'about:blank') this.dom.navFrame.src = last;
+        
+        this.dom.navFrame.onload = () => {
+          try { localStorage.setItem(this.config.navKey, this.dom.navFrame.contentWindow.location.href); } catch(e){}
+        };
+      },
+
+      toggleSystem(force) {
+        this.state.active = force !== undefined ? force : !this.state.active;
+        if(this.state.active) {
+          this.dom.body.classList.add('system-active');
+          this.dom.sysStatus.innerText = "ONLINE";
+          this.dom.sysStatus.style.color = "var(--neon-cyan)";
+          this.dom.sysStatus.style.borderColor = "rgba(0,242,255,0.3)";
+        } else {
+          this.dom.body.classList.remove('system-active');
+          this.dom.sysStatus.innerText = "STANDBY";
+          this.dom.sysStatus.style.color = "#666";
+          this.dom.sysStatus.style.borderColor = "rgba(255,255,255,0.05)";
+        }
+      },
+
+      toggleEditor(show) {
+        if(show) {
+          this.dom.viewEditor.classList.remove('translate-x-full');
+          this.dom.modTitle.value = '';
+          this.dom.modContent.value = '';
+          this.dom.modTitle.focus();
+        } else {
+          this.dom.viewEditor.classList.add('translate-x-full');
+        }
+      },
+
+      toggleSafe() {
+        this.state.safeMode = !this.state.safeMode;
+        this.dom.safeLabel.innerText = this.state.safeMode ? "SAFE" : "RAW";
+        this.dom.safeLabel.style.color = this.state.safeMode ? "inherit" : "#ff4d4d";
+        this.showToast(this.state.safeMode ? "PROTOCOL: SAFE" : "PROTOCOL: RAW (UNSAFE)");
+      },
+      
+      toggleInfodose() {
+        this.state.infodose = !this.state.infodose;
+        this.dom.pulseBar.style.opacity = this.state.infodose ? '1' : '0';
+        this.showToast(this.state.infodose ? "INFODOSE LINKED" : "INFODOSE UNLINKED");
+      },
+
+      saveModule() {
+        const title = this.dom.modTitle.value.trim();
+        const content = this.dom.modContent.value.trim();
+        if(!title) return this.showToast("ERROR: TITLE REQUIRED");
+        
+        const mod = {
+          id: Date.now(),
+          title,
+          content: content || '<h1>Empty Module</h1>',
+          date: new Date().toLocaleDateString()
+        };
+        
+        this.state.stacks.unshift(mod);
+        localStorage.setItem(this.config.vaultKey, JSON.stringify(this.state.stacks));
+        this.renderVault();
+        this.toggleEditor(false);
+        this.showToast("MODULE CRYSTALLIZED");
+      },
+
+      handleUpload(e) {
+        const file = e.target.files[0];
+        if(!file) return;
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+          this.state.stacks.unshift({
+            id: Date.now(),
+            title: file.name,
+            content: ev.target.result,
+            date: new Date().toLocaleDateString()
+          });
+          localStorage.setItem(this.config.vaultKey, JSON.stringify(this.state.stacks));
+          this.renderVault();
+          this.showToast("FILE UPLOADED");
+        };
+        reader.readAsText(file);
+      },
+
+      deleteModule(id) {
+        if(!confirm("DELETE MODULE?")) return;
+        this.state.stacks = this.state.stacks.filter(s => s.id !== id);
+        localStorage.setItem(this.config.vaultKey, JSON.stringify(this.state.stacks));
+        this.renderVault();
+      },
+
+      renderVault() {
+        this.dom.stackList.innerHTML = '';
+        document.getElementById('vaultCount').innerText = `${this.state.stacks.length} ITEMS`;
+        
+        if(this.state.stacks.length === 0) {
+          this.dom.stackList.innerHTML = `<div class="text-center py-8 text-gray-600 font-code text-xs">VAULT EMPTY</div>`;
+          return;
+        }
+
+        this.state.stacks.forEach(stack => {
+          const el = document.createElement('div');
+          el.className = 'flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/5 hover:border-dual-cyan/30 group transition-all cursor-pointer';
+          el.innerHTML = `
+            <div class="flex items-center gap-3">
+              <div class="w-8 h-8 rounded bg-black/40 flex items-center justify-center text-dual-cyan/70 group-hover:text-dual-cyan transition-colors">
+                <i data-lucide="box" class="w-4 h-4"></i>
+              </div>
+              <div class="overflow-hidden">
+                <div class="font-bold text-sm text-gray-300 group-hover:text-white truncate">${stack.title}</div>
+                <div class="text-[10px] text-gray-500 font-code">${stack.date}</div>
+              </div>
+            </div>
+            <div class="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+              <button class="run-btn w-8 h-8 rounded-lg bg-dual-cyan text-black hover:bg-white flex items-center justify-center transition-colors"><i data-lucide="play" class="w-3 h-3 fill-current"></i></button>
+              <button class="del-btn w-8 h-8 rounded-lg border border-red-500/30 text-red-500 hover:bg-red-500 hover:text-white flex items-center justify-center transition-colors"><i data-lucide="trash-2" class="w-3 h-3"></i></button>
+            </div>
+          `;
+          
+          el.querySelector('.run-btn').onclick = (e) => { e.stopPropagation(); this.runModule(stack.id); };
+          el.querySelector('.del-btn').onclick = (e) => { e.stopPropagation(); this.deleteModule(stack.id); };
+          el.onclick = () => this.runModule(stack.id);
+          
+          this.dom.stackList.appendChild(el);
+        });
+        
+        if(window.lucide) lucide.createIcons();
+      },
+
+      runModule(id) {
+        const mod = this.state.stacks.find(s => s.id === id);
+        if(!mod) return;
+        
+        let code = mod.content;
+        if(this.state.safeMode) {
+          try {
+             if(!code.includes('<html') && !code.includes('<!doctype')) {
+               code = `<style>body{color:#fff;background:transparent;font-family:sans-serif}</style>${code}`;
+             }
+          } catch(e){}
+        }
+
+        this.dom.appFrame.srcdoc = code;
+        this.dom.runtimeLayer.classList.add('visible');
+        this.dom.sysStatus.innerText = "RUNNING";
+        this.dom.sysStatus.classList.add('animate-pulse');
+      },
+
+      closeRuntime() {
+        this.dom.runtimeLayer.classList.remove('visible');
+        this.dom.sysStatus.classList.remove('animate-pulse');
+        this.dom.sysStatus.innerText = "ONLINE";
+        setTimeout(() => this.dom.appFrame.srcdoc = '', 400);
+      },
+
+      showToast(msg) {
+        this.dom.toast.innerText = msg;
+        this.dom.toast.classList.remove('opacity-0', 'translate-y-[-10px]');
+        clearTimeout(this.toastTimer);
+        this.toastTimer = setTimeout(() => {
+          this.dom.toast.classList.add('opacity-0', 'translate-y-[-10px]');
+        }, 2000);
+      }
+    };
+
+    window.onload = () => App.init();
+  </script>
 </body>
 </html>
-
