@@ -4,7 +4,16 @@
   <meta charset="utf-8" />
   <title>DUAL // UNIFIED · OS</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <meta name="theme-color" content="#020202">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#020202">
+<link rel="apple-touch-icon" href="icon-192.png">
+
+<script>
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('sw.js')
+      .then(() => console.log('Service Worker Registered'));
+  }
+</script>
   <meta name="description" content="DUAL Unified — Code Vault & Runtime Environment">
 
   <!-- Tailwind CSS -->
